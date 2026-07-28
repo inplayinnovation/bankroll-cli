@@ -1,4 +1,4 @@
-# bankroll-cli
+# @joinbankroll/cli
 
 Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps.
 
@@ -6,11 +6,12 @@ Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps
 npm create bankroll-app@latest my-app
 cd my-app
 npm run bankroll      # tunnel + QR — scan it to open the app inside Bankroll
-npm run mint          # your own token
+npm run token         # what this app declares
 ```
 
 Installed as a devDependency by the scaffolder, so `npm run` finds it. To use it
-in any directory, `npm i -g bankroll-cli`.
+in any directory, `npm i -g @joinbankroll/cli` — the binary is `bankroll` either
+way.
 
 ## Commands
 

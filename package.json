@@ -1,5 +1,5 @@
 {
-  "name": "bankroll-cli",
+  "name": "@joinbankroll/cli",
   "version": "0.1.0",
   "description": "Command-line tools for Built for Bankroll apps",
   "license": "MIT",
@@ -41,5 +41,8 @@
     "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
