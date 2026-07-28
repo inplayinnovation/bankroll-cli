@@ -3,7 +3,7 @@
 Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps.
 
 ```bash
-npm create bankroll-app@latest my-app
+npm create @joinbankroll/app@latest my-app
 cd my-app
 npm run bankroll      # tunnel + QR — scan it to open the app inside Bankroll
 npm run token         # what this app declares
