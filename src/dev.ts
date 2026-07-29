@@ -11,6 +11,7 @@
 // in-flight Wi-Fi).
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { delimiter, join } from 'node:path';
 
 import { bin, install, Tunnel } from 'cloudflared';
@@ -18,7 +19,6 @@ import { bin, install, Tunnel } from 'cloudflared';
 import { loadSigner } from './keypair';
 import { qrLines } from './qr';
 
-const DEFAULT_PORT = '3000';
 const DEV_COMMAND = 'next';
 const DEV_ARGS = ['dev'];
 const TUNNEL_TIMEOUT_MS = 20_000;
@@ -37,6 +37,31 @@ const TUNNEL_ORIGIN_ENV = 'BANKROLL_DEV_TUNNEL_ORIGIN';
 export interface DevOptions {
   port?: string;
   keypair?: string;
+}
+
+/**
+ * A port nobody is using.
+ *
+ * Which one does not matter: the app is reached through the tunnel, and the
+ * only requirement is that the tunnel and the dev server agree. Asking the OS
+ * beats defaulting to 3000 and colliding with whatever else is running — and
+ * beats letting the dev server pick, because then the tunnel points at a port
+ * it never chose.
+ */
+async function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.on('error', reject);
+    probe.listen(0, () => {
+      const address = probe.address();
+      if (address === null || typeof address === 'string') {
+        probe.close();
+        reject(new Error('could not find a free port'));
+        return;
+      }
+      probe.close(() => resolve(address.port));
+    });
+  });
 }
 
 // The tunnel is a convenience, not a prerequisite — without one the dev server
@@ -68,7 +93,8 @@ async function openTunnel(port: string): Promise<{ origin: string | null; stop: 
 }
 
 export async function dev(options: DevOptions): Promise<void> {
-  const port = options.port ?? process.env.PORT ?? DEFAULT_PORT;
+  // An explicit choice wins; otherwise take whatever is free.
+  const port = options.port ?? process.env.PORT ?? String(await freePort());
   const signer = loadSigner(options.keypair);
 
   if (signer.created) {

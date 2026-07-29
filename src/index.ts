@@ -32,7 +32,7 @@ program
 program
   .command('dev')
   .description('Run the dev server behind a public tunnel and print a QR to open it on a phone')
-  .option('-p, --port <port>', 'port the dev server listens on', '3000')
+  .option('-p, --port <port>', 'port to use (default: any free one — the tunnel hides it)')
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .action(async (options) => {
     await dev(options);
