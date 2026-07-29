@@ -10,6 +10,9 @@
 // machine, and it never leaves it.
 import { Command } from 'commander';
 
+// Replaced at build time with this package's version — see tsup.config.ts.
+declare const __VERSION__: string;
+
 import { dev } from './dev';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import * as token from './token';
@@ -23,7 +26,7 @@ const program = new Command();
 program
   .name('bankroll')
   .description('Command-line tools for Built for Bankroll apps')
-  .version(process.env.npm_package_version ?? '0.1.0')
+  .version(__VERSION__)
   // A wrong command should show what the right ones are. Without this the whole
   // reply is "unknown command", which is true and useless.
   .showHelpAfterError()
