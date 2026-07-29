@@ -23,7 +23,11 @@ const program = new Command();
 program
   .name('bankroll')
   .description('Command-line tools for Built for Bankroll apps')
-  .version(process.env.npm_package_version ?? '0.1.0');
+  .version(process.env.npm_package_version ?? '0.1.0')
+  // A wrong command should show what the right ones are. Without this the whole
+  // reply is "unknown command", which is true and useless.
+  .showHelpAfterError()
+  .showSuggestionAfterError();
 
 program
   .command('dev')
