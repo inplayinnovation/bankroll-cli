@@ -29,10 +29,11 @@ const TUNNEL_TIMEOUT_MS = 20_000;
 const TUNNEL_API_ORIGIN = 'https://api.trycloudflare.com';
 
 const PLAY_LINK = 'https://joinbankroll.com/play?url=';
+const MANIFEST_PATH = '/.well-known/bankroll.jwt';
+const MANIFEST_TIMEOUT_MS = 5_000;
 
-// The dev server reads these; neither is ever written to a file.
+// The dev server reads this; it is never written to a file.
 const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
-const TUNNEL_ORIGIN_ENV = 'BANKROLL_DEV_TUNNEL_ORIGIN';
 
 export interface DevOptions {
   port?: string;
@@ -62,6 +63,33 @@ async function freePort(): Promise<number> {
       probe.close(() => resolve(address.port));
     });
   });
+}
+
+/**
+ * Where the app boots, from the manifest it is serving.
+ *
+ * Asked of localhost, not the tunnel: the answer is the same either way, and
+ * going direct means this works on a machine that cannot resolve the tunnel's
+ * hostname. By the time a tunnel has finished coming up the dev server has been
+ * ready for seconds, so this is a single request with no waiting.
+ *
+ * Falls back to the origin. A QR pointing at the app's root still opens
+ * something; refusing to print one because a manifest was slow would not.
+ */
+async function launchPath(port: string): Promise<string> {
+  try {
+    const response = await fetch(`http://localhost:${port}${MANIFEST_PATH}`, {
+      signal: AbortSignal.timeout(MANIFEST_TIMEOUT_MS),
+    });
+    if (!response.ok) return '';
+    const payload = (await response.text()).trim().split('.')[1];
+    if (!payload) return '';
+    const claims: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    const launch = (claims as { launch?: unknown })?.launch;
+    return typeof launch === 'string' ? launch : '';
+  } catch {
+    return '';
+  }
 }
 
 // The tunnel is a convenience, not a prerequisite — without one the dev server
@@ -109,8 +137,10 @@ export async function dev(options: DevOptions): Promise<void> {
 `);
   }
 
-  const { origin, stop } = await openTunnel(port);
-
+  // The dev server first, then the tunnel. Nothing in the app's environment
+  // depends on the tunnel, so starting it first means the manifest is already
+  // being served by the time there is a URL to point at — which is what lets the
+  // QR carry the app's real launch path instead of guessing.
   const child = spawn(DEV_COMMAND, [...DEV_ARGS, '-p', port], {
     stdio: 'inherit',
     shell: true,
@@ -124,9 +154,10 @@ export async function dev(options: DevOptions): Promise<void> {
       // Injected into this process only. The secret never reaches .env.local,
       // so it cannot be committed and does not survive the session.
       [TREASURY_KEY_ENV]: signer.secretKey,
-      ...(origin ? { [TUNNEL_ORIGIN_ENV]: origin } : {}),
     },
   });
+
+  const { origin, stop } = await openTunnel(port);
 
   const shutdown = () => {
     stop();
@@ -144,12 +175,13 @@ export async function dev(options: DevOptions): Promise<void> {
     return;
   }
 
-  // The origin, not a path inside the app. /play loads exactly the URL it is
-  // given, so this opens whatever the app serves at its root — which is the
-  // app's own decision, not this tool's to second-guess.
-  const link = `${PLAY_LINK}${encodeURIComponent(origin)}`;
+  // /play loads exactly the URL it is given, so the launch path has to be in
+  // the link — pointing at the origin opens whatever the app serves at its
+  // root, which for most apps is a landing page rather than the app.
+  const target = `${origin}${await launchPath(port)}`;
+  const link = `${PLAY_LINK}${encodeURIComponent(target)}`;
 
   console.log('');
   for (const line of qrLines(link)) console.log('  ' + line);
-  console.log(`\n  Scan to open the app on your phone\n  ${origin}\n`);
+  console.log(`\n  Scan to open the app on your phone\n  ${target}\n`);
 }
