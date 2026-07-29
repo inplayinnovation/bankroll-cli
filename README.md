@@ -40,7 +40,7 @@ reachable it is. The tunnel needs no Cloudflare account, and because the phone
 reaches the app over the internet rather than the local network, this works on
 Wi-Fi that isolates clients from each other.
 
-The QR carries your app's  path, read from the manifest it is serving —
+The QR carries your app's `launch` path, read from the manifest it is serving —
 Bankroll loads exactly the URL it is given, so a scan opens your app rather than
 whatever sits at the root.
 
