@@ -10,7 +10,7 @@
   "homepage": "https://joinbankroll.com/build",
   "type": "module",
   "bin": {
-    "bankroll": "./dist/index.js"
+    "bankroll": "dist/index.js"
   },
   "files": [
     "dist"
