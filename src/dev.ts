@@ -17,7 +17,7 @@ import { delimiter, join } from 'node:path';
 import { bin, install, Tunnel } from 'cloudflared';
 
 import { loadSigner } from './keypair';
-import { qrLines } from './qr';
+import { qrLines, qrTextLines } from './qr';
 
 const DEV_COMMAND = 'next';
 const DEV_ARGS = ['dev'];
@@ -181,7 +181,13 @@ export async function dev(options: DevOptions): Promise<void> {
   const target = `${origin}${await launchPath(port)}`;
   const link = `${PLAY_LINK}${encodeURIComponent(target)}`;
 
+  // A TTY gets the colored QR. Anything else — piped or backgrounded, which is
+  // how a coding agent runs this — gets bare glyphs: the colored QR's contrast
+  // is entirely in its ANSI codes, which do not survive being re-printed into
+  // a chat. NO_COLOR (any value) forces the same on a TTY. The play link is
+  // printed in full either way, so it can be copied or re-encoded verbatim.
+  const plain = !process.stdout.isTTY || process.env.NO_COLOR !== undefined;
   console.log('');
-  for (const line of qrLines(link)) console.log('  ' + line);
-  console.log(`\n  Scan to open the app on your phone\n  ${target}\n`);
+  for (const line of plain ? qrTextLines(link) : qrLines(link)) console.log('  ' + line);
+  console.log(`\n  Scan to open the app on your phone\n  ${target}\n  Play link: ${link}\n`);
 }

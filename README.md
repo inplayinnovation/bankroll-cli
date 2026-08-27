@@ -44,6 +44,13 @@ The QR carries your app's `launch` path, read from the manifest it is serving �
 Bankroll loads exactly the URL it is given, so a scan opens your app rather than
 whatever sits at the root.
 
+On a TTY the QR is drawn with explicit ANSI colors, dark-on-light, so a dark
+terminal cannot invert it. When stdout is **not** a TTY — piped or backgrounded,
+which is how coding agents run it — the QR is bare block glyphs instead, safe to
+re-print into a chat transcript, where ANSI would be stripped and the colored
+form would collapse into a wall of `▀`. Setting `NO_COLOR` forces the bare form
+on a TTY too. The full play link is printed under the QR either way.
+
 ### `bankroll token`
 
 The two things a mint authority does. The shape is fixed because the host

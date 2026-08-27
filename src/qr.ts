@@ -43,3 +43,16 @@ export function qrLines(text: string): string[] {
   }
   return lines;
 }
+
+// The same code as bare glyphs — no escape codes. For output that is piped or
+// re-printed into a chat transcript, where ANSI is stripped and the colored
+// version above collapses into a uniform wall of ▀ (its contrast is entirely
+// in the colors). Light modules are glyphs and dark modules are spaces, so the
+// polarity is right on a dark background and inverted on a light one — phone
+// cameras read both.
+export function qrTextLines(text: string): string[] {
+  const qr = qrcode(QR_TYPE_AUTO, QR_ERROR_CORRECTION);
+  qr.addData(text);
+  qr.make();
+  return qr.createASCII().split('\n');
+}
