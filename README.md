@@ -19,6 +19,13 @@ way.
 bankroll login                                  log in to your Bankroll account
 bankroll logout                                 forget the login on this computer
 bankroll whoami                                 who this computer is logged in as
+bankroll apps                                   your apps, archived ones left out
+bankroll apps --published                       only the ones listed for everyone
+bankroll apps --archived                        only archived; --all for everything
+bankroll apps archive <id>                      off the air; code, data, wallet stay
+bankroll apps unarchive <id>                    back on the air
+bankroll apps publish <id>                      listed for everyone
+bankroll apps unpublish <id>                    unlisted; still playable by link
 
 bankroll dev                                    tunnel + QR, injects your key
 

@@ -16,6 +16,7 @@ declare const __VERSION__: string;
 
 import { dev } from './dev';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
+import * as apps from './apps';
 import { login, logout, whoami } from './login';
 import * as token from './token';
 import * as treasury from './treasury';
@@ -64,6 +65,51 @@ program
   .description('Who this computer is logged in as')
   .action(async () => {
     await whoami(program.opts());
+  });
+
+const builtApps = program.command('apps').description('The apps you built with Bankroll');
+
+builtApps
+  .command('list', { isDefault: true })
+  .description('List your apps, newest first; archived ones are left out')
+  .option('--published', 'only apps listed for everyone')
+  .option('--unpublished', 'only apps not listed')
+  .option('--archived', 'only archived apps')
+  .option('--all', 'archived apps too')
+  .action(async (options) => {
+    await apps.list({ ...program.opts(), ...options });
+  });
+
+builtApps
+  .command('archive')
+  .argument('<id>', 'the app, by its id from the list')
+  .description('Take an app off the air; its code, data, and wallet stay')
+  .action(async (id) => {
+    await apps.archive(id, program.opts());
+  });
+
+builtApps
+  .command('unarchive')
+  .argument('<id>', 'the app, by its id from the list')
+  .description('Put an archived app back on the air, same version')
+  .action(async (id) => {
+    await apps.unarchive(id, program.opts());
+  });
+
+builtApps
+  .command('publish')
+  .argument('<id>', 'the app, by its id from the list')
+  .description('List the app in Bankroll for everyone')
+  .action(async (id) => {
+    await apps.setPublished(id, true, program.opts());
+  });
+
+builtApps
+  .command('unpublish')
+  .argument('<id>', 'the app, by its id from the list')
+  .description('Take the app out of the listing; it stays playable by link')
+  .action(async (id) => {
+    await apps.setPublished(id, false, program.opts());
   });
 
 const tokens = program.command('token').description("The app's own tokens");
