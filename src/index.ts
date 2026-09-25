@@ -14,12 +14,19 @@ import { Command } from 'commander';
 // Replaced at build time with this package's version — see tsup.config.ts.
 declare const __VERSION__: string;
 
-import { dev } from './dev';
-import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import * as apps from './apps';
+import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import { login, logout, whoami } from './login';
-import * as token from './token';
-import * as treasury from './treasury';
+import * as repo from './repo';
+
+// The chain commands load the Solana library, which is slow to start and
+// prints a deprecation warning on load. They import it when they run, so
+// the account commands and the git credential helper never pay for it.
+const chain = {
+  dev: () => import('./dev'),
+  token: () => import('./token'),
+  treasury: () => import('./treasury'),
+};
 
 const KEYPAIR_HELP = `signing key to use (default: ${DEFAULT_KEYPAIR_PATH}, created on first use)`;
 const RPC_HELP = 'Solana RPC endpoint (default: SOLANA_RPC_URL, else the public endpoint)';
@@ -42,6 +49,7 @@ program
   .option('-p, --port <port>', 'port to use (default: any free one — the tunnel hides it)')
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .action(async (options) => {
+    const { dev } = await chain.dev();
     await dev(options);
   });
 
@@ -81,6 +89,15 @@ builtApps
   });
 
 builtApps
+  .command('clone')
+  .argument('<id>', 'the app, by its id from the list')
+  .argument('[directory]', 'where to put it (default: the repo name)')
+  .description("Clone the app's repo, with the remote named bankroll")
+  .action(async (id, directory) => {
+    await repo.clone(id, directory, program.opts());
+  });
+
+builtApps
   .command('archive')
   .argument('<id>', 'the app, by its id from the list')
   .description('Take an app off the air; its code, data, and wallet stay')
@@ -112,13 +129,22 @@ builtApps
     await apps.setPublished(id, false, program.opts());
   });
 
+// Git runs this one; a person never types it. See src/repo.ts.
+program
+  .command(repo.CREDENTIAL_COMMAND, { hidden: true })
+  .argument('<id>')
+  .argument('<action>')
+  .action(async (id, action) => {
+    await repo.gitCredential(id, action, program.opts());
+  });
+
 const tokens = program.command('token').description("The app's own tokens");
 
 tokens
   .command('list', { isDefault: true })
   .description('List the tokens this app declares')
-  .action(() => {
-    token.list();
+  .action(async () => {
+    (await chain.token()).list();
   });
 
 tokens
@@ -130,7 +156,7 @@ tokens
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .option('--rpc <url>', RPC_HELP)
   .action(async (options) => {
-    await token.create(options);
+    await (await chain.token()).create(options);
   });
 
 tokens
@@ -141,7 +167,7 @@ tokens
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .option('--rpc <url>', RPC_HELP)
   .action(async (mint, options) => {
-    await token.mint(mint, options);
+    await (await chain.token()).mint(mint, options);
   });
 
 const wallet = program.command('treasury').description('The wallet the app runs on');
@@ -152,7 +178,7 @@ wallet
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .option('--rpc <url>', RPC_HELP)
   .action(async (options) => {
-    await treasury.show(options);
+    await (await chain.treasury()).show(options);
   });
 
 wallet
@@ -164,7 +190,7 @@ wallet
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .option('--rpc <url>', RPC_HELP)
   .action(async (recipient, options) => {
-    await treasury.send(recipient, options);
+    await (await chain.treasury()).send(recipient, options);
   });
 
 // A thrown error is a real failure, and its message is the whole message — no

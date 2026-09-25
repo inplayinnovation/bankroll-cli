@@ -22,6 +22,7 @@ bankroll whoami                                 who this computer is logged in a
 bankroll apps                                   your apps, archived ones left out
 bankroll apps --published                       only the ones listed for everyone
 bankroll apps --archived                        only archived; --all for everything
+bankroll apps clone <id> [dir]                  the app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
 bankroll apps publish <id>                      listed for everyone
@@ -150,6 +151,14 @@ nobody is watching.
 `-e <name>` uses another Bankroll api, described in
 `~/.config/bankroll/environments.json` as `{ "<name>": { "apiUrl": …,
 "privyAppId": … } }`, with a session file of its own.
+
+### `bankroll apps clone`
+
+Clones the app's private repo with the remote named `bankroll`, so
+`git push bankroll main` saves your changes to it. Git gets its credentials
+from this tool: a token for that one repo, good for an hour, fetched from the
+api each time git asks. Nothing is written to disk, and `bankroll logout`
+ends the access.
 
 The project commands above need no account: `dev`, `token`, and `treasury` are
 local or on-chain, and the only credential they use is the signing key.
