@@ -3,15 +3,18 @@
 Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps.
 
 ```bash
-npm create @joinbankroll/app@latest my-app
-cd my-app
-npm run bankroll      # tunnel + QR — scan it to open the app inside Bankroll
-npm run token         # what this app declares
+npx bankroll login                 # your Bankroll account, once per computer
+npx bankroll apps                  # the apps you built with Bankroll
+npx bankroll apps clone 12         # one of them, as a repo with the remote named bankroll
+cd br-12-abc123 && npm run dev     # tunnel + QR — scan it to open the app inside Bankroll
+git push bankroll main             # Bankroll builds and deploys it
 ```
 
-Installed as a devDependency by the scaffolder, so `npm run` finds it. To use it
-in any directory, `npm i -g @joinbankroll/cli` — the binary is `bankroll` either
-way.
+The [starter](https://github.com/inplayinnovation/bankroll-starter) carries it
+as a devDependency, so `npm run` and `npx` find it inside an app. To use it in
+any directory, `npm i -g @joinbankroll/cli` — the binary is `bankroll` either
+way. Starting an app outside Bankroll's builder instead:
+`npm create @joinbankroll/app@latest my-app`.
 
 ## Commands
 
@@ -30,18 +33,7 @@ bankroll apps publish <id>                      listed for everyone
 bankroll apps unpublish <id>                    unlisted; still playable by link
 
 bankroll dev                                    tunnel + QR, injects your key
-
-bankroll token list                             what this app declares
-bankroll token create --name "Acme Credit"      create one, and record it
-bankroll token mint <mint> --supply 1000        issue more of one you control
-
-bankroll treasury                               address, SOL, HSUSD, your tokens
-bankroll treasury send <wallet> --amount 100    HSUSD, or --token <mint>
 ```
-
-Grouped by what they act on. `token mint` issues new supply; `treasury send`
-moves what is already held. They are different operations and never share a
-name.
 
 ### `bankroll dev`
 
@@ -64,53 +56,6 @@ re-print into a chat transcript, where ANSI would be stripped and the colored
 form would collapse into a wall of `▀`. Setting `NO_COLOR` forces the bare form
 on a TTY too. The full play link is printed under the QR either way.
 
-### `bankroll token`
-
-The two things a mint authority does. The shape is fixed because the host
-refuses anything else: 9 decimals, one token to the dollar, no freeze authority.
-Your signing key becomes the mint authority and holds the supply, because it
-needs the supply to pay users back — which is why `mint` issues fresh supply
-rather than moving what you are holding.
-
-`create` is one transaction, so either the token exists complete or nothing
-happened, and it records the token only after it exists on-chain. It prompts for
-a name and description if you do not pass them, unless there is no terminal — in
-which case `--name` is required, so CI fails rather than hangs.
-
-Costs about 0.01 SOL to create and 0.003 to issue more, most of it refundable
-account rent.
-
-### `bankroll treasury`
-
-The wallet your app runs on: it receives every charge, signs every payout, and
-pays its own fees. So it holds SOL for fees, HSUSD for real-money payouts, and
-whatever tokens you issue — and all three run out for different reasons.
-
-There is no `fund` command. SOL and HSUSD arrive from an exchange or another
-wallet, which a CLI cannot do; all it can do is show you the address.
-
-`send` moves HSUSD out by default — taking revenue from the treasury is the
-common case. `--token <mint>` sends one of your own instead, which is how you
-fund a wallet for testing.
-
-## app-tokens.json
-
-The tokens your app issues live in `app-tokens.json` at the project root. The
-file **is** the manifest's `appTokens` claim, so nothing transforms it on the
-way out:
-
-```json
-{
-  "Fh2EUwnL52CbeHttBGdW8yHKshvCbVR7pTEa5JYLKxJm": {
-    "name": "Acme Credit",
-    "description": "Promo credit for Acme."
-  }
-}
-```
-
-A file rather than an environment variable, because an app may issue several
-tokens and each carries metadata — neither of which one env var can hold.
-
 ## The signing key
 
 Kept at `~/.config/bankroll/keypair.json`, created on first use and never
@@ -129,10 +74,8 @@ deleting one file is a complete cleanup.
 The secret is injected into the process `bankroll dev` spawns and is never
 written into your project, so it cannot be committed.
 
-**Back it up.** This key becomes your token's mint authority — lose it and the
-token can never be minted again. A deployment should use a *different*
-`BANKROLL_TREASURY_KEY`, set as a sensitive variable, so the durable mint
-authority never goes near the app.
+A deployment should use a *different* `BANKROLL_TREASURY_KEY`, set as a
+sensitive variable, so the key on your machine never goes near the app.
 
 ## Logging in
 
@@ -161,5 +104,5 @@ from this tool: a token for that one repo, good for an hour, fetched from the
 api each time git asks. Nothing is written to disk, and `bankroll logout`
 ends the access.
 
-The project commands above need no account: `dev`, `token`, and `treasury` are
-local or on-chain, and the only credential they use is the signing key.
+`dev` needs no account: it is local, and the only credential it uses is the
+signing key.
