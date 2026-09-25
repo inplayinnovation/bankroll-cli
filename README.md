@@ -16,6 +16,10 @@ way.
 ## Commands
 
 ```
+bankroll login                                  log in to your Bankroll account
+bankroll logout                                 forget the login on this computer
+bankroll whoami                                 who this computer is logged in as
+
 bankroll dev                                    tunnel + QR, injects your key
 
 bankroll token list                             what this app declares
@@ -121,7 +125,24 @@ token can never be minted again. A deployment should use a *different*
 `BANKROLL_TREASURY_KEY`, set as a sensitive variable, so the durable mint
 authority never goes near the app.
 
-## No account required
+## Logging in
 
-Everything here is local or on-chain. There is no Bankroll account, no API key,
-and nothing to revoke.
+`bankroll login` prints a link and a short code. Open the link, log in to
+Bankroll with your phone number, and approve the code. The terminal finishes on
+its own. It is the same device login GitHub's CLI uses.
+
+The session goes into your credential store: the keychain on macOS, the
+keyring through `secret-tool` on Linux. It refreshes itself and lasts 30 days
+from the last use. `bankroll logout` removes it.
+
+Where there is no store, the CLI says why and asks before keeping the session
+in `~/.config/bankroll/session.json`, readable by your user only but not
+encrypted. `--allow-file-session` gives that answer up front, for a shell
+nobody is watching.
+
+`-e <name>` uses another Bankroll api, described in
+`~/.config/bankroll/environments.json` as `{ "<name>": { "apiUrl": …,
+"privyAppId": … } }`, with a session file of its own.
+
+The project commands above need no account: `dev`, `token`, and `treasury` are
+local or on-chain, and the only credential they use is the signing key.

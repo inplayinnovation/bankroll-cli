@@ -5,9 +5,10 @@
 // `token mint` issues new supply, `treasury send` moves what is already held,
 // and neither can be mistaken for the other.
 //
-// Everything here is local or on-chain. There is no account, no API key, and
-// nothing to revoke: the only credential involved is a Solana keypair on this
-// machine, and it never leaves it.
+// The project commands (`dev`, `token`, `treasury`) are local or on-chain: the
+// only credential involved is a Solana keypair on this machine, and it never
+// leaves it. `login` is separate: it keeps a Bankroll account session on this
+// machine for the commands that act on your account.
 import { Command } from 'commander';
 
 // Replaced at build time with this package's version — see tsup.config.ts.
@@ -15,6 +16,7 @@ declare const __VERSION__: string;
 
 import { dev } from './dev';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
+import { login, logout, whoami } from './login';
 import * as token from './token';
 import * as treasury from './treasury';
 
@@ -30,7 +32,8 @@ program
   // A wrong command should show what the right ones are. Without this the whole
   // reply is "unknown command", which is true and useless.
   .showHelpAfterError()
-  .showSuggestionAfterError();
+  .showSuggestionAfterError()
+  .option('-e, --env <name>', 'a Bankroll api other than production, from ~/.config/bankroll/environments.json');
 
 program
   .command('dev')
@@ -39,6 +42,28 @@ program
   .option('-k, --keypair <path>', KEYPAIR_HELP)
   .action(async (options) => {
     await dev(options);
+  });
+
+program
+  .command('login')
+  .description('Log in to your Bankroll account from this computer')
+  .option('--allow-file-session', 'keep the login in a plain file if the credential store cannot be used')
+  .action(async (options) => {
+    await login({ ...program.opts(), ...options });
+  });
+
+program
+  .command('logout')
+  .description('Forget the login on this computer')
+  .action(() => {
+    logout(program.opts());
+  });
+
+program
+  .command('whoami')
+  .description('Who this computer is logged in as')
+  .action(async () => {
+    await whoami(program.opts());
   });
 
 const tokens = program.command('token').description("The app's own tokens");
