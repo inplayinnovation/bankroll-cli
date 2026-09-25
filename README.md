@@ -22,6 +22,7 @@ bankroll whoami                                 who this computer is logged in a
 bankroll apps                                   your apps, archived ones left out
 bankroll apps --published                       only the ones listed for everyone
 bankroll apps --archived                        only archived; --all for everything
+bankroll apps create --name <name>              a new app from the starter, no agent
 bankroll apps clone <id> [dir]                  the app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air

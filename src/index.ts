@@ -89,6 +89,14 @@ builtApps
   });
 
 builtApps
+  .command('create')
+  .requiredOption('--name <name>', 'what the app is called')
+  .description("A new app from the starter, with no agent run: clone it, build it yourself, push")
+  .action(async (options) => {
+    await apps.create(options.name, program.opts());
+  });
+
+builtApps
   .command('clone')
   .argument('<id>', 'the app, by its id from the list')
   .argument('[directory]', 'where to put it (default: the repo name)')

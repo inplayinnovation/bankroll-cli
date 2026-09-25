@@ -38,6 +38,8 @@ const SET_PUBLISHED_MUTATION = `mutation SetPublished($id: ID!, $published: Bool
 
 export type AppState = Pick<AppRow, 'id' | 'name' | 'url' | 'status' | 'archivedAt' | 'publishedAt'>;
 
+const CREATE_MUTATION = `mutation CreateApp($name: String!) { builderCreateApp(name: $name) { ${APP_FIELDS} } }`;
+
 const COLUMNS = ['ID', 'NAME', 'STATUS', 'PUBLISHED', 'LAST RUN', 'CREATED', 'URL'] as const;
 const GAP = '  ';
 const NO_APPS = 'No apps yet. Build one in the Bankroll app.';
@@ -103,6 +105,14 @@ export async function list(options: AccountOptions & ListOptions): Promise<void>
     lines.push('', `${archivedHidden} archived ${archivedHidden === 1 ? 'app' : 'apps'} hidden; --archived shows them, --all shows everything`);
   }
   console.log(`\n${lines.join('\n').replace(/^/gm, '  ')}\n`);
+}
+
+/** An app with the starter's files and no agent run: yours to clone, edit, and push. */
+export async function create(name: string, options: AccountOptions): Promise<void> {
+  const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION, { name });
+  const app = data.builderCreateApp;
+  console.log(`\n  ${describeApp(app)}`);
+  console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.\n`);
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {
