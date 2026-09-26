@@ -98,7 +98,13 @@ async function launchPath(port: string): Promise<string> {
 async function openTunnel(port: string): Promise<{ origin: string | null; stop: () => void }> {
   // cloudflared exports the path it expects its binary at; install() puts it
   // there. Checked first so a present binary skips a network round trip.
-  if (!existsSync(bin)) await install(bin);
+  // npm 11 blocks a dependency's install script unless the person allows it,
+  // so on most machines the download happens here, on the first run. A long
+  // silence looks like a hang, so say what is happening.
+  if (!existsSync(bin)) {
+    console.log('\n  Downloading the tunnel, once. This may take a minute…\n');
+    await install(bin);
+  }
   const tunnel = Tunnel.quick(`http://localhost:${port}`);
 
   const origin = await new Promise<string | null>((resolve) => {
