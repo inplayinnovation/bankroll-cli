@@ -13,8 +13,7 @@ git push bankroll main             # Bankroll builds and deploys it
 The [starter](https://github.com/inplayinnovation/bankroll-starter) carries it
 as a devDependency, so `npm run` and `npx` find it inside an app. To use it in
 any directory, `npm i -g @joinbankroll/cli` — the binary is `bankroll` either
-way. Starting an app outside Bankroll's builder instead:
-`npm create @joinbankroll/app@latest my-app`.
+way.
 
 ## Commands
 
@@ -76,6 +75,19 @@ written into your project, so it cannot be committed.
 
 A deployment should use a *different* `BANKROLL_TREASURY_KEY`, set as a
 sensitive variable, so the key on your machine never goes near the app.
+
+## Building with an agent
+
+The `bankroll` skill teaches a coding agent this workflow: create, clone,
+run, push, watch the build, publish, and the money rules. Install it once,
+for every agent on the machine:
+
+```bash
+npx skills add inplayinnovation/bankroll-cli --skill bankroll -g
+```
+
+`apps create` and `apps clone` print that line. The skill lives in
+[`skills/bankroll/SKILL.md`](./skills/bankroll/SKILL.md) in this repo.
 
 ## Logging in
 

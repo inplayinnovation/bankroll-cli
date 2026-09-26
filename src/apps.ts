@@ -8,7 +8,7 @@ import { sessionLocation } from './session';
 const APPS_QUERY = `query Apps {
   builderApps {
     id name url status archivedAt publishedAt createdAt
-    latestRun { status startedAt }
+    latestRun { status startedAt error }
   }
 }`;
 
@@ -20,7 +20,7 @@ export interface AppRow {
   archivedAt: string | null;
   publishedAt: string | null;
   createdAt: string;
-  latestRun: { status: string; startedAt: string } | null;
+  latestRun: { status: string; startedAt: string; error: string | null } | null;
 }
 
 interface AppsData {
@@ -29,6 +29,9 @@ interface AppsData {
 
 // What a mutation answers with: enough to say the app's new state.
 const APP_FIELDS = 'id name url status archivedAt publishedAt';
+
+/** Printed after create and clone: the skill that teaches a coding agent this workflow. */
+export const SKILL_HINT = 'Building with an agent? `npx skills add inplayinnovation/bankroll-cli --skill bankroll -g` teaches it the workflow.';
 
 const ARCHIVE_MUTATION = `mutation Archive($id: ID!) { builderArchiveApp(id: $id) { ${APP_FIELDS} } }`;
 const UNARCHIVE_MUTATION = `mutation Unarchive($id: ID!) { builderUnarchiveApp(id: $id) { ${APP_FIELDS} } }`;
@@ -43,6 +46,9 @@ const CREATE_MUTATION = `mutation CreateApp($name: String!) { builderCreateApp(n
 const COLUMNS = ['ID', 'NAME', 'STATUS', 'PUBLISHED', 'LAST RUN', 'CREATED', 'URL'] as const;
 const GAP = '  ';
 const NO_APPS = 'No apps yet. Build one in the Bankroll app.';
+const RUN_FAILED = 'error';
+// A failed run's reason, under the table: the same text the owner's phone got.
+const FAILED_PREFIX = 'last run failed: ';
 
 const day = (iso: string) => iso.slice(0, 'YYYY-MM-DD'.length);
 
@@ -61,7 +67,13 @@ export function formatApps(apps: AppRow[]): string {
   const widths = COLUMNS.map((column, i) => Math.max(column.length, ...rows.map((row) => row[i]!.length)));
   const line = (cells: readonly string[]) =>
     cells.map((cell, i) => (i === cells.length - 1 ? cell : cell.padEnd(widths[i]!))).join(GAP);
-  return [line(COLUMNS), ...rows.map(line)].join('\n');
+  const failed = apps.flatMap((app) => {
+    const run = app.latestRun;
+    if (run?.status !== RUN_FAILED || !run.error) return [];
+    const head = `${app.id}${GAP}${app.name}: ${FAILED_PREFIX}`;
+    return [head + run.error.trim().replace(/\n/g, `\n${' '.repeat(head.length)}`)];
+  });
+  return [line(COLUMNS), ...rows.map(line), ...(failed.length > 0 ? ['', ...failed] : [])].join('\n');
 }
 
 export interface ListOptions {
@@ -112,7 +124,8 @@ export async function create(name: string, options: AccountOptions): Promise<voi
   const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION, { name });
   const app = data.builderCreateApp;
   console.log(`\n  ${describeApp(app)}`);
-  console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.\n`);
+  console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
+  console.log(`  ${SKILL_HINT}\n`);
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {

@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { basename, resolve } from 'node:path';
 
 import { graphql } from './api';
+import { SKILL_HINT } from './apps';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
 import { sessionLocation } from './session';
@@ -75,7 +76,8 @@ export async function clone(appId: string, directory: string | undefined, option
   if (result.error) throw new Error(`git could not be run: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`git clone exited with ${result.status}`);
   console.log(`\n  Cloned ${repo} into ${target}.`);
-  console.log(`  The remote is named ${REMOTE}: \`git push ${REMOTE} main\` saves your changes to the app's repo.\n`);
+  console.log(`  The remote is named ${REMOTE}: \`git push ${REMOTE} main\` saves your changes to the app's repo.`);
+  console.log(`  ${SKILL_HINT}\n`);
 }
 
 /**
