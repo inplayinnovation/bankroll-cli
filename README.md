@@ -3,11 +3,12 @@
 Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps.
 
 ```bash
-npx bankroll login                 # your Bankroll account, once per computer
-npx bankroll apps                  # the apps you built with Bankroll
-npx bankroll apps clone 12         # one of them, as a repo with the remote named bankroll
-cd br-12-abc123 && npm run dev     # tunnel + QR — scan it to open the app inside Bankroll
-git push bankroll main             # Bankroll builds and deploys it
+npm i -g @joinbankroll/cli               # once per computer
+bankroll login                           # your Bankroll account
+bankroll apps create --name "My App"     # the app, and its repo here
+cd br-12-abc123 && npm install           # what create prints
+npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
+git push bankroll main                   # Bankroll builds and deploys it
 ```
 
 The [starter](https://github.com/inplayinnovation/bankroll-starter) carries it
@@ -24,8 +25,8 @@ bankroll whoami                                 who this computer is logged in a
 bankroll apps                                   your apps, archived ones left out
 bankroll apps --published                       only the ones listed for everyone
 bankroll apps --archived                        only archived; --all for everything
-bankroll apps create --name <name>              a new app from the starter, no agent
-bankroll apps clone <id> [dir]                  the app's repo, remote named bankroll
+bankroll apps create --name <name>              a new app, cloned here; --no-clone leaves it
+bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
 bankroll apps publish <id>                      listed for everyone

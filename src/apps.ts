@@ -3,7 +3,9 @@
 import { graphql } from './api';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
+import { cloneRepo } from './repo';
 import { sessionLocation } from './session';
+import { SKILL_HINT } from './skill';
 
 const APPS_QUERY = `query Apps {
   builderApps {
@@ -29,9 +31,6 @@ interface AppsData {
 
 // What a mutation answers with: enough to say the app's new state.
 const APP_FIELDS = 'id name url status archivedAt publishedAt';
-
-/** Printed after create and clone: the skill that teaches a coding agent this workflow. */
-export const SKILL_HINT = 'Building with an agent? `npx skills add inplayinnovation/bankroll-cli --skill bankroll -g` teaches it the workflow.';
 
 const ARCHIVE_MUTATION = `mutation Archive($id: ID!) { builderArchiveApp(id: $id) { ${APP_FIELDS} } }`;
 const UNARCHIVE_MUTATION = `mutation Unarchive($id: ID!) { builderUnarchiveApp(id: $id) { ${APP_FIELDS} } }`;
@@ -119,13 +118,32 @@ export async function list(options: AccountOptions & ListOptions): Promise<void>
   console.log(`\n${lines.join('\n').replace(/^/gm, '  ')}\n`);
 }
 
-/** An app with the starter's files and no agent run: yours to clone, edit, and push. */
-export async function create(name: string, options: AccountOptions): Promise<void> {
+export interface CreateOptions {
+  /** Leave the repo on Bankroll: for a script, or a phone-first app. */
+  noClone?: boolean;
+}
+
+/**
+ * An app with the starter's files and no agent run. The repo is the only
+ * reason to make one from a computer, so it is cloned here unless the caller
+ * says otherwise; the app exists either way, and `apps clone` can run later.
+ */
+export async function create(name: string, options: AccountOptions & CreateOptions): Promise<void> {
   const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION, { name });
   const app = data.builderCreateApp;
   console.log(`\n  ${describeApp(app)}`);
-  console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
-  console.log(`  ${SKILL_HINT}\n`);
+  if (options.noClone) {
+    console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
+    console.log(`  ${SKILL_HINT}\n`);
+    return;
+  }
+  try {
+    const { name: directory } = await cloneRepo(app.id, undefined, options);
+    console.log(`  cd ${directory} && npm install\n`);
+  } catch (error) {
+    console.log(`  The app is made, but its repo is not on this computer: ${error instanceof Error ? error.message : String(error)}`);
+    console.log(`  Try again with \`bankroll apps clone ${app.id}\`.\n`);
+  }
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {

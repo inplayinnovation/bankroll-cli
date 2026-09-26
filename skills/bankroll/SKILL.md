@@ -20,8 +20,8 @@ is mostly rules.
 npm i -g @joinbankroll/cli          # once per machine
 bankroll login                      # opens the browser; log in with a phone number, approve the code
 bankroll apps                       # your apps, each with its latest run's state
-bankroll apps create --name "Name"  # a new app from the starter; prints its id
-bankroll apps clone <id>            # its repo, with the remote named bankroll
+bankroll apps create --name "Name"  # a new app from the starter, cloned into ./br-<id>-xxxxxx
+bankroll apps clone <id>            # an app you already have, if its repo is not here
 bankroll apps publish <id>          # list it for everyone: from then on real players pay
 bankroll --help                     # discover the rest; do not recall commands from memory
 ```
@@ -31,8 +31,9 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
 
 ## Build: create, clone, run
 
-1. `bankroll apps create --name "<name>"`, then `bankroll apps clone <id>`, `cd`
-   into it, `npm install`.
+1. `bankroll apps create --name "<name>"`. It makes the app and clones its
+   repo here; `cd` into the directory it prints, then `npm install`. For an
+   app that already exists, `bankroll apps clone <id>`.
 2. Look for `.env.development` at the project root. Bankroll writes it when
    it creates an app, with `STORE=fs`, `BANKROLL_MOCK=1`, and the app's name,
    payee, owner, and wallet id, and `next dev` reads it. An older app has

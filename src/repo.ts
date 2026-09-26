@@ -6,10 +6,10 @@ import { spawnSync } from 'node:child_process';
 import { basename, resolve } from 'node:path';
 
 import { graphql } from './api';
-import { SKILL_HINT } from './apps';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
 import { sessionLocation } from './session';
+import { SKILL_HINT } from './skill';
 
 const REPO_TOKEN_MUTATION = `mutation RepoToken($id: ID!) { builderRepoToken(id: $id) { repo token expiresAt } }`;
 const GITHUB = 'https://github.com';
@@ -70,14 +70,31 @@ async function repoToken(appId: string, options: AccountOptions): Promise<RepoTo
 }
 
 export async function clone(appId: string, directory: string | undefined, options: AccountOptions): Promise<void> {
+  const { name } = await cloneRepo(appId, directory, options);
+  console.log(`  cd ${name} && npm install\n`);
+}
+
+/**
+ * The clone itself: the app's repo on disk, with the remote named bankroll.
+ * Returns the directory it made, so a caller can say what comes next.
+ * `apps create` calls this too, which is why the closing advice is the
+ * caller's and not this function's.
+ */
+export async function cloneRepo(
+  appId: string,
+  directory: string | undefined,
+  options: AccountOptions,
+): Promise<{ name: string; target: string; repo: string }> {
   const { repo } = await repoToken(appId, options);
-  const target = resolve(directory ?? basename(repo));
+  const name = directory ?? basename(repo);
+  const target = resolve(name);
   const result = spawnSync('git', cloneArgs(repo, target, helperCommand(appId, options.env)), { stdio: 'inherit' });
   if (result.error) throw new Error(`git could not be run: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`git clone exited with ${result.status}`);
   console.log(`\n  Cloned ${repo} into ${target}.`);
   console.log(`  The remote is named ${REMOTE}: \`git push ${REMOTE} main\` saves your changes to the app's repo.`);
-  console.log(`  ${SKILL_HINT}\n`);
+  console.log(`  ${SKILL_HINT}`);
+  return { name, target, repo };
 }
 
 /**
