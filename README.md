@@ -5,7 +5,7 @@ Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps
 ```bash
 npm i -g @joinbankroll/cli               # once per computer
 bankroll login                           # your Bankroll account
-bankroll apps create --name "My App"     # the app, and its repo here
+bankroll apps create                     # the app, and its repo here
 cd br-12-abc123 && npm install           # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
 git push bankroll main                   # Bankroll builds and deploys it
@@ -25,7 +25,7 @@ bankroll whoami                                 who this computer is logged in a
 bankroll apps                                   your apps, archived ones left out
 bankroll apps --published                       only the ones listed for everyone
 bankroll apps --archived                        only archived; --all for everything
-bankroll apps create --name <name>              a new app, cloned here; --no-clone leaves it
+bankroll apps create                            a new app, cloned here; --no-clone leaves it
 bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
@@ -108,6 +108,12 @@ nobody is watching.
 `-e <name>` uses another Bankroll api, described in
 `~/.config/bankroll/environments.json` as `{ "<name>": { "apiUrl": …,
 "privyAppId": … } }`, with a session file of its own.
+
+### `bankroll apps create`
+
+The app is made with no name. Put one in `bankroll-app.json` at the root of its
+repo: Bankroll signs that name into the app's manifest on the next push, and
+shows it everywhere. The same file is what a remix starts from.
 
 ### `bankroll apps clone`
 

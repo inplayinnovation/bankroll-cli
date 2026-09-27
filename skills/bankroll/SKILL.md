@@ -20,7 +20,7 @@ is mostly rules.
 npm i -g @joinbankroll/cli          # once per machine
 bankroll login                      # opens the browser; log in with a phone number, approve the code
 bankroll apps                       # your apps, each with its latest run's state
-bankroll apps create --name "Name"  # a new app from the starter, cloned into ./br-<id>-xxxxxx
+bankroll apps create                # a new app from the starter, cloned into ./br-<id>-xxxxxx
 bankroll apps clone <id>            # an app you already have, if its repo is not here
 bankroll apps publish <id>          # list it for everyone: from then on real players pay
 bankroll --help                     # discover the rest; do not recall commands from memory
@@ -31,23 +31,27 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
 
 ## Build: create, clone, run
 
-1. `bankroll apps create --name "<name>"`. It makes the app and clones its
-   repo here; `cd` into the directory it prints, then `npm install`. For an
-   app that already exists, `bankroll apps clone <id>`.
-2. Look for `.env.development` at the project root. Bankroll writes it when
-   it creates an app, with `STORE=fs`, `BANKROLL_MOCK=1`, and the app's name,
-   payee, owner, and wallet id, and `next dev` reads it. An older app has
-   none; give it the three settings that matter before running anything:
+1. `bankroll apps create`. It makes the app and clones its repo here; `cd`
+   into the directory it prints, then `npm install`. For an app that already
+   exists, `bankroll apps clone <id>`.
+2. Name the app in `bankroll-app.json` at the root of the repo, next to
+   drawing its icon: `{ "name": "Free Throw Duel" }`. Bankroll signs that name
+   into the app's manifest on the next push, and the name in the manifest is
+   the name a player sees. An app with no name answers to its address.
+3. Look for `.env.development` at the project root. Bankroll writes it when
+   it creates an app, with `STORE=fs`, `BANKROLL_MOCK=1`, and the app's payee,
+   owner, and wallet id, and `next dev` reads it. An older app has none; give
+   it the two settings that matter before running anything:
 
    ```bash
-   printf 'STORE=fs\nBANKROLL_MOCK=1\nBANKROLL_APP_NAME=<name>\n' > .env.local
+   printf 'STORE=fs\nBANKROLL_MOCK=1\n' > .env.local
    ```
 
    `STORE=fs` keeps documents in local files instead of Vercel Blob.
    `BANKROLL_MOCK=1` makes the server accept a stand-in host: its token, its
    made-up charge signatures, and simulated payouts, so no money moves and no
    key is needed. Production builds ignore both files.
-3. Read the repo's `AGENTS.md` before you write code. It is the authority on the
+4. Read the repo's `AGENTS.md` before you write code. It is the authority on the
    app's structure, screens, and money rules; where it and this skill differ,
    follow `AGENTS.md`. Fetch the docs once: https://docs.joinbankroll.com/llms-full.txt
    (the index is /llms.txt), or add the docs MCP server at
@@ -56,19 +60,19 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
    write SDK calls from memory: the SDK is
    pre-1.0 and minor versions carry breaking changes; check the installed
    version, then the changelog page.
-4. Run and look: `npx next dev`, then `npm run check -- /app` loads the app in
+5. Run and look: `npx next dev`, then `npm run check -- /app` loads the app in
    a headless phone-sized browser with the stand-in host and fails on any
    console error, page error, or failed request; read its screenshots in
    `checks/`. Under `BANKROLL_MOCK=1` the app also puts the stand-in host on
    its own page, so `http://localhost:3000/app` runs in any browser as the
    pretend user (an app from before 2026-09-26 lacks this and shows "Open this
    in Bankroll" in a browser; use `npm run check` there).
-5. On a phone: `npm run dev` runs the dev server behind a public tunnel and
+6. On a phone: `npm run dev` runs the dev server behind a public tunnel and
    prints a QR that opens the app inside Bankroll, with real sessions and real
    charges paid to a dev signing key at `~/.config/bankroll/keypair.json`.
    Leave `BANKROLL_MOCK` out of `.env.local` for that loop. The tunnel URL
    changes on every restart: "Can't open this app" means a dead tunnel.
-6. Before a push: `npm run typecheck && npm run lint && npm run build`. A build
+7. Before a push: `npm run typecheck && npm run lint && npm run build`. A build
    that fails is not deployed.
 
 ## Ship: the push is the deploy

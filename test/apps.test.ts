@@ -61,6 +61,12 @@ describe('describeApp', () => {
       'Stackline (53): archived, not published, https://br-53-vzzo4b.vercel.app',
     );
   });
+
+  it('falls back to the address of an app that has no name yet', () => {
+    expect(describeApp({ ...app, name: null, status: 'ready', publishedAt: null })).toBe(
+      'br-53-vzzo4b.vercel.app (53): ready, not published, https://br-53-vzzo4b.vercel.app',
+    );
+  });
 });
 
 describe('filterApps', () => {

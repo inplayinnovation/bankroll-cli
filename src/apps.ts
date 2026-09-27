@@ -16,7 +16,8 @@ const APPS_QUERY = `query Apps {
 
 export interface AppRow {
   id: string;
-  name: string;
+  /** What the app's signed manifest calls it; null until its first build names it. */
+  name: string | null;
   url: string;
   status: string;
   archivedAt: string | null;
@@ -40,7 +41,7 @@ const SET_PUBLISHED_MUTATION = `mutation SetPublished($id: ID!, $published: Bool
 
 export type AppState = Pick<AppRow, 'id' | 'name' | 'url' | 'status' | 'archivedAt' | 'publishedAt'>;
 
-const CREATE_MUTATION = `mutation CreateApp($name: String!) { builderCreateApp(name: $name) { ${APP_FIELDS} } }`;
+const CREATE_MUTATION = `mutation CreateApp { builderCreateApp { ${APP_FIELDS} } }`;
 
 const COLUMNS = ['ID', 'NAME', 'STATUS', 'PUBLISHED', 'LAST RUN', 'CREATED', 'URL'] as const;
 const GAP = '  ';
@@ -48,15 +49,21 @@ const NO_APPS = 'No apps yet. Build one in the Bankroll app.';
 const RUN_FAILED = 'error';
 // A failed run's reason, under the table: the same text the owner's phone got.
 const FAILED_PREFIX = 'last run failed: ';
+// What a fresh app answers to, and how it gets a name of its own.
+const NAME_HINT = 'Name it in bankroll-app.json: Bankroll signs that name into the manifest on the next push.';
 
 const day = (iso: string) => iso.slice(0, 'YYYY-MM-DD'.length);
+
+// An app is named by the manifest Bankroll signed for it, so an app that has
+// not been built yet has no name. Its address stands in until it does.
+const nameOf = (app: Pick<AppRow, 'name' | 'url'>) => app.name ?? new URL(app.url).hostname;
 
 /** One line per app, columns as wide as their widest value; nothing cut. */
 export function formatApps(apps: AppRow[]): string {
   if (apps.length === 0) return NO_APPS;
   const rows = apps.map((app) => [
     app.id,
-    app.name,
+    nameOf(app),
     app.archivedAt ? 'archived' : app.status,
     app.publishedAt ? 'yes' : 'no',
     app.latestRun ? `${app.latestRun.status} ${day(app.latestRun.startedAt)}` : '-',
@@ -69,7 +76,7 @@ export function formatApps(apps: AppRow[]): string {
   const failed = apps.flatMap((app) => {
     const run = app.latestRun;
     if (run?.status !== RUN_FAILED || !run.error) return [];
-    const head = `${app.id}${GAP}${app.name}: ${FAILED_PREFIX}`;
+    const head = `${app.id}${GAP}${nameOf(app)}: ${FAILED_PREFIX}`;
     return [head + run.error.trim().replace(/\n/g, `\n${' '.repeat(head.length)}`)];
   });
   return [line(COLUMNS), ...rows.map(line), ...(failed.length > 0 ? ['', ...failed] : [])].join('\n');
@@ -103,7 +110,7 @@ export function filterApps(apps: AppRow[], options: ListOptions): { shown: AppRo
 export function describeApp(app: AppState): string {
   const state = app.archivedAt ? 'archived' : app.status;
   const published = app.publishedAt ? 'published' : 'not published';
-  return `${app.name} (${app.id}): ${state}, ${published}, ${app.url}`;
+  return `${nameOf(app)} (${app.id}): ${state}, ${published}, ${app.url}`;
 }
 
 const locationFor = (options: AccountOptions) => sessionLocation(resolveEnvironment(options.env));
@@ -127,11 +134,14 @@ export interface CreateOptions {
  * An app with the starter's files and no agent run. The repo is the only
  * reason to make one from a computer, so it is cloned here unless the caller
  * says otherwise; the app exists either way, and `apps clone` can run later.
+ * The app has no name yet: it takes the one in `bankroll-app.json` when its
+ * first push is built.
  */
-export async function create(name: string, options: AccountOptions & CreateOptions): Promise<void> {
-  const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION, { name });
+export async function create(options: AccountOptions & CreateOptions): Promise<void> {
+  const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION);
   const app = data.builderCreateApp;
   console.log(`\n  ${describeApp(app)}`);
+  console.log(`  ${NAME_HINT}`);
   if (options.noClone) {
     console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
     console.log(`  ${SKILL_HINT}\n`);

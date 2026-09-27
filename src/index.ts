@@ -80,11 +80,10 @@ builtApps
 
 builtApps
   .command('create')
-  .requiredOption('--name <name>', 'what the app is called')
   .option('--no-clone', "leave the app's repo on Bankroll instead of cloning it here")
   .description("A new app from the starter, cloned here: build it yourself, then push")
   .action(async (options) => {
-    await apps.create(options.name, { ...program.opts(), noClone: options.clone === false });
+    await apps.create({ ...program.opts(), noClone: options.clone === false });
   });
 
 builtApps
