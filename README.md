@@ -95,7 +95,11 @@ The page is served from this computer alone, at `http://localhost:4100`, or the
 next free port. `--no-open` prints the link and leaves the browser alone.
 
 The simulator is part of this package, so it is as new as your CLI. `dev` says
-so when a newer CLI is published.
+so when a newer CLI is published, and so does the simulator: at the bottom of
+its sidebar are the SDK your app runs and the CLI serving it, a line each,
+marked when a later release is out, when what is installed in the app's folder
+is not what the project asks for (a pull with no `npm install` after it), and
+when it is a local build. Rest the pointer on a line for the detail.
 
 ## The signing key
 

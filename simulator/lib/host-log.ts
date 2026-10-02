@@ -26,8 +26,27 @@ import type { Insets } from "./devices";
 
 const CHANNEL = "simulator";
 
-/** Every call a host answers, in the order the sidebar lists them. */
-export const HOST_CALLS = ["session", "identity", "pay", "balances", "deposit", "haptics", "promptReview", "quote", "requestAmount"] as const;
+/**
+ * The calls an app makes to its host through the SDK, by the SDK's names and
+ * in the order the sidebar lists them. init() comes first, as it does in an
+ * app, and says which SDK the app runs. status() is not one: it reads the page
+ * and asks the host nothing.
+ */
+export const SDK_CALLS = ["init", "session", "charge", "balances", "deposit", "haptics", "promptReview"] as const;
+
+// What is heard here is what the host was asked, and the host's name for a
+// call is not always the SDK's. charge() asks the host for `pay`: the SDK
+// renamed its function and kept the name on the wire, for the Bankroll apps
+// already on phones. A call is listed under the name an app's code calls it by.
+//
+// The host answers three more that the SDK has no function for (identity, the
+// old name for session, and quote and requestAmount). They are not listed
+// until an app makes one, by reaching past the SDK to window.bankroll.
+//
+// A call the SDK refuses before it asks, one made before init(), never
+// reaches the host. The stand-in host is told of it and tells it here as a
+// call that failed, so it shows where the call would have.
+const SDK_NAME = new Map([["pay", "charge"]]);
 
 /** One call, from when it began to how it ended. */
 export interface CallEntry {
@@ -45,6 +64,8 @@ export interface CallEntry {
 export interface CallSection {
   /** Every call since the app opened, or since the log was cleared. */
   count: number;
+  /** How many of them failed. */
+  failed: number;
   /** The most recent calls, newest first. */
   entries: CallEntry[];
 }
@@ -52,19 +73,21 @@ export interface CallSection {
 export interface HostLog {
   /** True once the open app's stand-in host has been heard from. */
   connected: boolean;
-  /** The nine calls, then any other the app's host turns out to answer. */
+  /** The SDK the open app said it runs, in init(). Undefined until it has, and for an app on an SDK from before init(). */
+  sdk?: string;
+  /** The SDK's calls, then any other the app turns out to make. */
   methods: string[];
   sections: Record<string, CallSection>;
 }
 
 // A balance read every two seconds would otherwise grow without end.
 const ENTRIES_KEPT = 100;
-const EMPTY_SECTION: CallSection = { count: 0, entries: [] };
+const EMPTY_SECTION: CallSection = { count: 0, failed: 0, entries: [] };
 
 const emptyLog = (): HostLog => ({
   connected: false,
-  methods: [...HOST_CALLS],
-  sections: Object.fromEntries(HOST_CALLS.map((method) => [method, EMPTY_SECTION])),
+  methods: [...SDK_CALLS],
+  sections: Object.fromEntries(SDK_CALLS.map((method) => [method, EMPTY_SECTION])),
 });
 
 let log = emptyLog();
@@ -86,6 +109,7 @@ function publish(next: HostLog) {
 function withEntry(method: string, change: (section: CallSection) => CallSection) {
   const known = method in log.sections;
   publish({
+    ...log,
     connected: true,
     methods: known ? log.methods : [...log.methods, method],
     sections: { ...log.sections, [method]: change(log.sections[method] ?? EMPTY_SECTION) },
@@ -105,18 +129,30 @@ function hear(event: MessageEvent) {
     if (!log.connected) publish({ ...log, connected: true });
     return;
   }
-  const { id, method } = message;
-  if (typeof id !== "number" || typeof method !== "string") return;
+  const { id } = message;
+  if (typeof id !== "number" || typeof message.method !== "string") return;
+  const method = SDK_NAME.get(message.method) ?? message.method;
 
   if (message.type === "call") {
     if (id <= lastId) run += 1;
     lastId = id;
+    // init() is where an app says which SDK it runs. Kept apart from its
+    // entry in the log, which Clear empties.
+    if (method === "init" && isRecord(message.input) && typeof message.input.sdk === "string") log = { ...log, sdk: message.input.sdk };
     const entry: CallEntry = { key: `${run}:${id}`, at: typeof message.at === "number" ? message.at : Date.now(), input: message.input };
-    withEntry(method, (section) => ({ count: section.count + 1, entries: [entry, ...section.entries].slice(0, ENTRIES_KEPT) }));
+    withEntry(method, (section) => ({ ...section, count: section.count + 1, entries: [entry, ...section.entries].slice(0, ENTRIES_KEPT) }));
   } else if (message.type === "result") {
     const key = `${run}:${id}`;
     const ended = { ok: message.ok === true, value: message.value, error: typeof message.error === "string" ? message.error : undefined, ms: typeof message.ms === "number" ? message.ms : undefined };
-    withEntry(method, (section) => ({ ...section, entries: section.entries.map((entry) => (entry.key === key ? { ...entry, ...ended } : entry)) }));
+    withEntry(method, (section) => {
+      // Counted once: when its call is still waiting to hear how it ended.
+      const waiting = section.entries.some((entry) => entry.key === key && entry.ok === undefined);
+      return {
+        ...section,
+        failed: section.failed + (waiting && !ended.ok ? 1 : 0),
+        entries: section.entries.map((entry) => (entry.key === key ? { ...entry, ...ended } : entry)),
+      };
+    });
   }
 }
 
@@ -137,7 +173,7 @@ function listen() {
   window.addEventListener("message", hear);
 }
 
-const SERVER_METHODS: string[] = [...HOST_CALLS];
+const SERVER_METHODS: string[] = [...SDK_CALLS];
 
 // Each hook reads one part of the log, so a call re-renders its own section
 // and nothing else: a balance read every two seconds should not redraw the lot.
@@ -151,7 +187,16 @@ export function useHostConnected(): boolean {
   );
 }
 
-/** The calls to list: the nine, then any other the app's host answers. */
+/** The SDK the open app said it runs, or undefined when it has not said. */
+export function useReportedSdk(): string | undefined {
+  return useSyncExternalStore(
+    subscribe,
+    () => log.sdk,
+    () => undefined,
+  );
+}
+
+/** The calls to list: the SDK's, then any other the app makes. */
 export function useHostMethods(): string[] {
   return useSyncExternalStore(
     subscribe,
@@ -195,7 +240,7 @@ export function detachFrame(element: HTMLIFrameElement) {
   publish(emptyLog());
 }
 
-/** Empties the log and keeps listening. */
+/** Empties the log and keeps listening. What the app said of itself stands. */
 export function clearHostLog() {
-  publish({ ...emptyLog(), connected: log.connected });
+  publish({ ...emptyLog(), connected: log.connected, ...(log.sdk ? { sdk: log.sdk } : {}) });
 }

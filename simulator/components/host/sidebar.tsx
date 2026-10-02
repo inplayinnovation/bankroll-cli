@@ -5,14 +5,18 @@ import { hostOf } from "@/lib/apps";
 import { clearHostLog, useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
 import { useOpenApp } from "@/lib/open-app";
+import { Runtime } from "./runtime";
 
 // How long an app gets to report before the sidebar says why it may not be.
 const PATIENCE_MS = 2500;
 
 /**
  * The column beside the phone: every call the open app makes to its host. One
- * section per call, always listed, with how many times it was made; a section
- * opens to its calls, and its header flashes each time one is made.
+ * section per call the SDK offers, always listed and under the SDK's name for
+ * it, with how many times it was made; a section opens to its calls, and its
+ * header flashes each time one is made: red when one fails, and it then says
+ * how many have. A call the SDK has no function for gets a section when the
+ * app makes it.
  */
 export function HostSidebar() {
   const url = useOpenApp();
@@ -25,6 +29,8 @@ export function HostSidebar() {
       ) : (
         <SidebarNote title="Host calls">Open an app to see what it asks of its host.</SidebarNote>
       )}
+      {/* Along the bottom, whatever is above it: what the app runs in. */}
+      {url !== undefined && <Runtime url={url} />}
     </aside>
   );
 }
@@ -87,19 +93,21 @@ function SidebarNote({ title, children }: { title: string; children: ReactNode }
 
 /** One call: a header that counts and flashes, and its calls underneath when open. */
 const CallSectionRow = memo(function CallSectionRow({ method }: { method: string }) {
-  const { count, entries } = useCallSection(method);
+  const { count, failed, entries } = useCallSection(method);
   const [open, setOpen] = useState(false);
   const header = useRef<HTMLButtonElement>(null);
-  const flashed = useRef(count);
+  const flashed = useRef({ count, failed });
 
-  // Each call flashes the header, open or shut. Run as an animation and not a
-  // class: two calls in quick succession should flash twice.
+  // Each call flashes the header, open or shut, and a call that fails flashes
+  // it red. Run as an animation and not a class: two calls in quick succession
+  // should flash twice.
   useEffect(() => {
-    if (count > flashed.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      header.current?.animate([{ backgroundColor: "var(--flash)" }, { backgroundColor: "transparent" }], { duration: 700, easing: "ease-out" });
+    const flash = failed > flashed.current.failed ? "var(--flash-failed)" : count > flashed.current.count ? "var(--flash)" : null;
+    if (flash && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      header.current?.animate([{ backgroundColor: flash }, { backgroundColor: "transparent" }], { duration: 700, easing: "ease-out" });
     }
-    flashed.current = count;
-  }, [count]);
+    flashed.current = { count, failed };
+  }, [count, failed]);
 
   return (
     <li className="call-section">
@@ -108,6 +116,7 @@ const CallSectionRow = memo(function CallSectionRow({ method }: { method: string
           <path d="M1.5 1l5 4-5 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span className="call-name">{method}</span>
+        {failed > 0 && <span className="call-failed">{failed} failed</span>}
         <span className="call-count" data-none={count === 0 || undefined}>
           {count}
         </span>

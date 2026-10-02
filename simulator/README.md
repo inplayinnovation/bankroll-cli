@@ -12,15 +12,31 @@ and the CLI serves it from there (`src/simulator.ts`).
 - **The app** is a web page on its own origin, shown in a frame
   (`components/shell/app-frame.tsx`). Which app is open is in the page's URL:
   `/?app=http://localhost:3000/app`.
-- **The sidebar** (`components/host/sidebar.tsx`) lists the app's host calls.
+- **The sidebar** (`components/host/sidebar.tsx`) lists the app's host calls:
+  the seven the SDK offers, always, under the SDK's names (`charge`, where the
+  host hears `pay`), and any other only once the app makes it. `init` is first:
+  an app calls it before anything else, and it says which SDK the app runs. A
+  call that fails flashes its row red and is counted as failed. That includes a
+  call the SDK refuses before it asks the host, one made before `init()`: the
+  stand-in host is told of it and passes it on.
   The app is another origin, so nothing of it can be read from here: the SDK's
   stand-in host tells this page each call in window messages
   (`lib/host-log.ts`, and `SimulatorMessage` in `@joinbankroll/sdk/mock`). That
   needs `@joinbankroll/sdk` 0.33.0 in the app, running with `BANKROLL_MOCK=1`.
-- **Two paths on its own origin** are answered by whoever serves the page,
+- **Three paths on its own origin** are answered by whoever serves the page,
   which is the CLI: `/api/manifest?url=` reads an app's manifest, which the
-  page cannot fetch across origins, and `/api/apps` names the app the CLI is
-  running.
+  page cannot fetch across origins, `/api/apps` names the app the CLI is
+  running, and `/api/versions` says which CLI that is and which SDK the app
+  has.
+- **What the app runs in** is along the bottom of the sidebar
+  (`components/host/runtime.tsx`): a lock and "Secure Runtime", then a line
+  each for the SDK the open app runs and the CLI serving the page, with a word
+  beside a version when there is something to say. `local` is a build of
+  someone's own, `update` a later release, `stale` an install that is not what
+  the project asks for. A line says more when the pointer rests on it. The app
+  says which SDK it runs in `init()`; the rest is read by the CLI, in the app's
+  folder and at the registry (`src/versions.ts` there), since this page can
+  reach neither.
 - **The safe area** reaches the app the same way, in the other direction. The
   app's frame fills the display, as Bankroll's web view does, and the status
   bar and the home indicator are drawn over it. A browser on a computer reports
@@ -50,7 +66,7 @@ npm install          # here, once
 npm run dev          # http://localhost:4100, hot reloading
 ```
 
-`npm run dev` serves the page only. The two `/api` paths are handed to the
+`npm run dev` serves the page only. The `/api` paths are handed to the
 CLI's server at `http://localhost:4101` (`BANKROLL_SIMULATOR_API` changes
 that), so run it alongside the CLI. `npm run dogfood -- <app directory>` in the
 repo root starts both, with an app.
