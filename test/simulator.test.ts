@@ -165,6 +165,32 @@ describe('the simulator, served', () => {
     expect((await fetch(`${at}/api/manifest`)).status).toBe(400);
   });
 
+  it('says which CLI this is, and which SDK the open app has, when it is told about them', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bankroll-cli-app-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ dependencies: { '@joinbankroll/sdk': '^0.32.0' } }));
+    mkdirSync(join(dir, 'node_modules', '@joinbankroll', 'sdk'), { recursive: true });
+    writeFileSync(join(dir, 'node_modules', '@joinbankroll', 'sdk', 'package.json'), JSON.stringify({ version: '0.19.1' }));
+    const latest = async (name: string) => (name === '@joinbankroll/sdk' ? '0.32.0' : '0.5.0');
+    const at = await serving({ root: site(), app: `${APP}/app`, about: { cli: '0.5.0', dir, local: false, latest } });
+    const cli = { version: '0.5.0', latest: '0.5.0', behind: false, local: false };
+
+    // On the home screen there is no SDK to speak of.
+    expect(await (await fetch(`${at}/api/versions`)).json()).toEqual({ cli });
+
+    // The running app: its folder is read, and what it says it runs is believed.
+    const own = await (await fetch(`${at}/api/versions?${new URLSearchParams({ app: `${APP}/app`, sdk: '0.19.1' })}`)).json();
+    expect(own).toEqual({ cli, sdk: { version: '0.19.1', latest: '0.32.0', behind: true, local: false, installed: '0.19.1', wanted: '^0.32.0', stale: true } });
+
+    // Another app, and a version that is not one.
+    const other = await (await fetch(`${at}/api/versions?${new URLSearchParams({ app: 'https://elsewhere.example/app', sdk: '<script>' })}`)).json();
+    expect(other).toEqual({ cli, sdk: { latest: '0.32.0', behind: false, local: false, stale: false } });
+  });
+
+  it('does not answer for versions when nobody told it about them', async () => {
+    const at = await serving({ root: site(), app: APP });
+    expect((await fetch(`${at}/api/versions`)).status).toBe(404);
+  });
+
   it('only reads', async () => {
     const at = await serving({ root: site(), app: APP });
     expect((await fetch(`${at}/api/apps`, { method: 'POST' })).status).toBe(405);

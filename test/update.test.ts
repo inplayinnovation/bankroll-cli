@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isNewer, updateNotice } from '../src/update';
+import { isNewer, latestVersion, updateNotice } from '../src/update';
 
 const registry = (body: unknown, status = 200) =>
   (async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
@@ -19,6 +19,27 @@ describe('isNewer', () => {
     expect(isNewer('latest', '0.5.0')).toBe(false);
     expect(isNewer('0.6', '0.5.0')).toBe(false);
     expect(isNewer('0.6.0', '')).toBe(false);
+  });
+});
+
+describe('latestVersion', () => {
+  it('asks the registry for a package\'s latest release', async () => {
+    const asked: string[] = [];
+    const fetchImpl = (async (input: string | URL | Request) => {
+      asked.push(String(input));
+      return new Response(JSON.stringify({ version: '0.33.0' }), { status: 200 });
+    }) as typeof fetch;
+    expect(await latestVersion('@joinbankroll/sdk', fetchImpl)).toBe('0.33.0');
+    expect(asked).toEqual(['https://registry.npmjs.org/@joinbankroll/sdk/latest']);
+  });
+
+  it('is undefined when the registry cannot say', async () => {
+    expect(await latestVersion('@joinbankroll/sdk', registry({}, 404))).toBeUndefined();
+    expect(await latestVersion('@joinbankroll/sdk', registry({ version: 33 }))).toBeUndefined();
+    const offline = (async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    expect(await latestVersion('@joinbankroll/sdk', offline)).toBeUndefined();
   });
 });
 

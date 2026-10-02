@@ -3,13 +3,15 @@
 //
 // The simulator is a page: an iPhone frame around the app, and beside it every
 // call the app makes to its host. It is built from simulator/ into
-// dist/simulator as static files. This serves them, and answers the two paths
+// dist/simulator as static files. This serves them, and answers the paths
 // the page calls on its own origin:
 //
 //   /api/manifest?url=   what an app says about itself: its name, where it
 //                        opens, its icon. The page cannot ask the app, which is
 //                        another origin whose manifest carries no CORS header.
 //   /api/apps            the app this command is running, for the home screen.
+//   /api/versions        which CLI this is and which SDK the app has, and what
+//                        is worth saying of either (src/versions.ts).
 //
 // It listens on this computer's loopback addresses and nowhere else: the
 // manifest path fetches whatever origin it is given, which is nothing to offer
@@ -20,13 +22,18 @@ import { createServer as createNetServer, type Server as NetServer } from 'node:
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { versionReport, type About } from './versions';
+
 /** Where the simulator is served, unless something else already has the port. */
 export const SIMULATOR_PORT = 4100;
 // The simulator's own dev server takes 4100 when someone is working on it, and
-// hands the two /api paths to this one (simulator/next.config.ts).
+// hands the /api paths to this one (simulator/next.config.ts).
 const API_PORT = 4101;
 // How many ports past the first are tried before giving up.
 const PORT_ATTEMPTS = 20;
+
+// A version as a package states one. What the page passes on is the app's word.
+const VERSION = /^\d+\.\d+\.\d+[\w.+-]*$/;
 
 const MANIFEST_PATH = '/.well-known/bankroll.jwt';
 const ICON_PATH = '/.well-known/bankroll-icon.png';
@@ -170,10 +177,12 @@ export interface SimulatorOptions {
   root: string | null;
   /** The running app's address, as the page should open it. */
   app: string;
+  /** This CLI and the running app's folder, which /api/versions reads. Without it that path is not answered. */
+  about?: About;
   fetchImpl?: typeof fetch;
 }
 
-/** Answers one request: the two /api paths, then the simulator's own files. */
+/** Answers one request: the /api paths, then the simulator's own files. */
 export function simulatorHandler(options: SimulatorOptions): (request: IncomingMessage, response: ServerResponse) => void {
   return (request, response) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -184,6 +193,15 @@ export function simulatorHandler(options: SimulatorOptions): (request: IncomingM
 
     if (pathname === '/api/apps') {
       sendJson(response, 200, { apps: [options.app] });
+      return;
+    }
+    if (pathname === '/api/versions' && options.about) {
+      // The page says which app is in the phone, and which SDK that app said
+      // it runs. Only the running app's folder is this command's to read.
+      const open = appOrigin(searchParams.get('app'));
+      const reported = searchParams.get('sdk');
+      const asked = { open: open !== null, own: open !== null && open === appOrigin(options.app), ...(reported && VERSION.test(reported) ? { reported } : {}) };
+      void versionReport(options.about, asked).then((report) => sendJson(response, 200, report));
       return;
     }
     if (pathname === '/api/manifest') {
@@ -303,18 +321,19 @@ export interface Simulator {
  * server at that address, for someone working on the simulator itself: only
  * the /api paths are answered here, where that dev server sends them.
  */
-export async function serveSimulator(app: string, env: NodeJS.ProcessEnv = process.env): Promise<Simulator> {
+export async function serveSimulator(app: string, env: NodeJS.ProcessEnv = process.env, about?: About): Promise<Simulator> {
+  const told = about ? { about } : {};
   const live = env.BANKROLL_SIMULATOR_URL?.replace(/\/+$/, '');
   if (live) {
     // That dev server sends /api to one address, so this port or none.
     const port = Number(new URL(env.BANKROLL_SIMULATOR_API ?? `http://localhost:${API_PORT}`).port);
-    const api = await listenLocally(simulatorHandler({ root: null, app }), port, 1);
+    const api = await listenLocally(simulatorHandler({ root: null, app, ...told }), port, 1);
     return { url: opened(live, app), stop: api.close };
   }
   const root = builtSimulator();
   if (!existsSync(join(root, 'index.html'))) {
     throw new Error(`The simulator is not in this build of the CLI (${root} is missing). In the CLI's repo, \`npm run build\` builds it.`);
   }
-  const server = await listenLocally(simulatorHandler({ root, app }), SIMULATOR_PORT);
+  const server = await listenLocally(simulatorHandler({ root, app, ...told }), SIMULATOR_PORT);
   return { url: opened(`http://localhost:${server.port}`, app), stop: server.close };
 }

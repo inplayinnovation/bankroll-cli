@@ -166,7 +166,7 @@ async function serverReady(port: string): Promise<boolean> {
  * There is no tunnel to wait for here, so the dev server may not be up yet:
  * the browser is opened once it answers, not on a page that refuses to load.
  */
-async function simulate(port: string, child: ChildProcess, notice: Promise<string | null>, open: boolean): Promise<void> {
+async function simulate(port: string, child: ChildProcess, notice: Promise<string | null>, open: boolean, version: string): Promise<void> {
   let stop = () => {};
   const shutdown = () => {
     stop();
@@ -184,7 +184,9 @@ async function simulate(port: string, child: ChildProcess, notice: Promise<strin
     console.warn(`\n  The dev server has not answered on port ${port}, so the simulator was not opened.\n`);
     return;
   }
-  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(port)}`).catch((error: unknown) => {
+  // This command runs in the app's folder: the simulator's sidebar says what is installed there.
+  const about = { cli: version, dir: process.cwd() };
+  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(port)}`, process.env, about).catch((error: unknown) => {
     // No simulator is a failure of the whole command: the dev server goes with it.
     child.kill();
     throw error;
@@ -240,7 +242,7 @@ export async function dev(options: DevOptions, version: string): Promise<void> {
   });
 
   if (options.simulator) {
-    await simulate(port, child, notice, options.open !== false);
+    await simulate(port, child, notice, options.open !== false, version);
     return;
   }
 

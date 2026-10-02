@@ -4,7 +4,8 @@
 //
 // One request to the registry, with a short patience, while the dev server
 // starts. No answer is no notice: being offline is not something to report.
-const LATEST = 'https://registry.npmjs.org/@joinbankroll/cli/latest';
+const REGISTRY = 'https://registry.npmjs.org';
+const CLI = '@joinbankroll/cli';
 const PATIENCE_MS = 1_500;
 
 const numbers = (version: string) => version.split('-')[0]!.split('.').map(Number);
@@ -19,19 +20,25 @@ export function isNewer(latest: string, current: string): boolean {
   return false;
 }
 
+/** The latest published release of a package, or undefined when the registry cannot say. Never rejects. */
+export async function latestVersion(name: string, fetchImpl: typeof fetch = fetch): Promise<string | undefined> {
+  try {
+    const response = await fetchImpl(`${REGISTRY}/${name}/latest`, { signal: AbortSignal.timeout(PATIENCE_MS) });
+    if (!response.ok) return undefined;
+    const { version } = (await response.json()) as { version?: unknown };
+    return typeof version === 'string' ? version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** What to tell someone on an older CLI, or null when there is nothing to say. Never rejects. */
 export async function updateNotice(current: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
-  try {
-    const response = await fetchImpl(LATEST, { signal: AbortSignal.timeout(PATIENCE_MS) });
-    if (!response.ok) return null;
-    const { version } = (await response.json()) as { version?: unknown };
-    if (typeof version !== 'string' || !isNewer(version, current)) return null;
-    return [
-      `bankroll ${version} is out; this is ${current}.`,
-      '  in an app:         npm i -D @joinbankroll/cli@latest',
-      '  on this computer:  npm i -g @joinbankroll/cli@latest',
-    ].join('\n');
-  } catch {
-    return null;
-  }
+  const version = await latestVersion(CLI, fetchImpl);
+  if (!version || !isNewer(version, current)) return null;
+  return [
+    `bankroll ${version} is out; this is ${current}.`,
+    '  in an app:         npm i -D @joinbankroll/cli@latest',
+    '  on this computer:  npm i -g @joinbankroll/cli@latest',
+  ].join('\n');
 }
