@@ -34,6 +34,13 @@ describe('formatApps', () => {
     expect(lines[2]).toBe('7   A much longer app name  archived  no         -                2026-09-23  https://br-53-vzzo4b.vercel.app');
   });
 
+  // The address is in its own column, so it is not also the name.
+  it('says an app has no name yet, beside its address', () => {
+    const fresh: AppRow = { ...app, id: '17', name: null, status: 'ready', publishedAt: null, latestRun: null };
+    const lines = formatApps([fresh]).split('\n');
+    expect(lines[1]).toBe('17  Unnamed app  ready   no         -         2026-09-23  https://br-53-vzzo4b.vercel.app');
+  });
+
   it('puts a failed run\'s reason under the table, every line of it', () => {
     const failed: AppRow = {
       ...app,
@@ -62,9 +69,9 @@ describe('describeApp', () => {
     );
   });
 
-  it('falls back to the address of an app that has no name yet', () => {
+  it('says so of an app that has no name yet, and gives its address once', () => {
     expect(describeApp({ ...app, name: null, status: 'ready', publishedAt: null })).toBe(
-      'br-53-vzzo4b.vercel.app (53): ready, not published, https://br-53-vzzo4b.vercel.app',
+      'Unnamed app (53): ready, not published, https://br-53-vzzo4b.vercel.app',
     );
   });
 });

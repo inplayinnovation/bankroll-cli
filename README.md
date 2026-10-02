@@ -5,8 +5,8 @@ Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps
 ```bash
 npm i -g @joinbankroll/cli               # once per computer
 bankroll login                           # your Bankroll account
-bankroll apps create                     # the app, and its repo here
-cd br-12-abc123 && npm install           # what create prints
+bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
+cd free-throw-duel && npm install        # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
 git push bankroll main                   # Bankroll builds and deploys it
 ```
@@ -25,7 +25,7 @@ bankroll whoami                                 who this computer is logged in a
 bankroll apps                                   your apps, archived ones left out
 bankroll apps --published                       only the ones listed for everyone
 bankroll apps --archived                        only archived; --all for everything
-bankroll apps create                            a new app, cloned here; --no-clone leaves it
+bankroll apps create [name]                     a new app, cloned here; --no-clone leaves it
 bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
@@ -111,9 +111,19 @@ nobody is watching.
 
 ### `bankroll apps create`
 
-The app is made with no name. Put one in `bankroll-app.json` at the root of its
-repo: Bankroll signs that name into the app's manifest on the next push, and
-shows it everywhere. The same file is what a remix starts from.
+An app declares its own name, in `bankroll-app.json` at the root of its repo:
+Bankroll signs that name into the app's manifest on the next push, and shows
+it everywhere. The same file is what a remix starts from.
+
+`bankroll apps create "Free Throw Duel"` makes that declaration for you. It
+writes the name into the clone's `bankroll-app.json`, commits that one file,
+and clones into `free-throw-duel`. Bankroll learns the name from the first
+push, so until then `bankroll apps` lists an `Unnamed app`. If a directory of
+that name is already here, nothing is made.
+
+With no name the clone lands in a directory named after the repo,
+`br-12-abc123`, and the name is yours to put in the file. `--no-clone` takes
+no name: there is no clone to write it into.
 
 ### `bankroll apps clone`
 

@@ -1,9 +1,11 @@
 // `bankroll apps` — the apps you built with Bankroll, as the api lists them
 // for their creator: newest first, drafts and archives included.
+import { existsSync } from 'node:fs';
+
 import { graphql } from './api';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
-import { cloneRepo } from './repo';
+import { cloneRepo, declareName, DECLARATION_FILE, directoryFor } from './repo';
 import { sessionLocation } from './session';
 import { SKILL_HINT } from './skill';
 
@@ -49,14 +51,16 @@ const NO_APPS = 'No apps yet. Build one in the Bankroll app.';
 const RUN_FAILED = 'error';
 // A failed run's reason, under the table: the same text the owner's phone got.
 const FAILED_PREFIX = 'last run failed: ';
-// What a fresh app answers to, and how it gets a name of its own.
-const NAME_HINT = 'Name it in bankroll-app.json: Bankroll signs that name into the manifest on the next push.';
+// How a fresh app gets a name of its own.
+const NAME_HINT = `Name it in ${DECLARATION_FILE}: Bankroll signs that name into the manifest on the next push.`;
+// An app is named by the manifest Bankroll signed for it, so an app that has
+// not been built yet has no name, and is shown as having none. Its address
+// has a place of its own on the line; said twice, it read as a name.
+const UNNAMED = 'Unnamed app';
 
 const day = (iso: string) => iso.slice(0, 'YYYY-MM-DD'.length);
 
-// An app is named by the manifest Bankroll signed for it, so an app that has
-// not been built yet has no name. Its address stands in until it does.
-const nameOf = (app: Pick<AppRow, 'name' | 'url'>) => app.name ?? new URL(app.url).hostname;
+const nameOf = (app: Pick<AppRow, 'name'>) => app.name ?? UNNAMED;
 
 /** One line per app, columns as wide as their widest value; nothing cut. */
 export function formatApps(apps: AppRow[]): string {
@@ -130,30 +134,57 @@ export interface CreateOptions {
   noClone?: boolean;
 }
 
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** What became of a name given to `create`, once the clone is here. */
+function declared(target: string, name: string): string {
+  try {
+    return declareName(target, name)
+      ? `${DECLARATION_FILE} names it ${name}, and that is committed: Bankroll signs the name into the manifest on the next push.`
+      : `${DECLARATION_FILE} names it ${name}, but git would not commit it. Commit it: Bankroll signs the name into the manifest once it is pushed.`;
+  } catch (error) {
+    return `The name did not reach ${DECLARATION_FILE}: ${reason(error)}. Put it there before you push.`;
+  }
+}
+
 /**
  * An app with the starter's files and no agent run. The repo is the only
  * reason to make one from a computer, so it is cloned here unless the caller
  * says otherwise; the app exists either way, and `apps clone` can run later.
- * The app has no name yet: it takes the one in `bankroll-app.json` when its
- * first push is built.
+ *
+ * The api takes no name: an app declares its own in `bankroll-app.json`, and
+ * has it once a push is built. A name given here is the same declaration,
+ * made for the person: written into the clone, committed, and lent to the
+ * clone's directory. Without one the app has no name yet, and says so.
  */
-export async function create(options: AccountOptions & CreateOptions): Promise<void> {
+export async function create(given: string | undefined, options: AccountOptions & CreateOptions): Promise<void> {
+  const name = given?.trim();
+  if (name === '') throw new Error('The name is empty. Leave it out to name the app later.');
+  if (name !== undefined && options.noClone) {
+    throw new Error(`A name is written into the clone, so it cannot go with --no-clone. Name the app in ${DECLARATION_FILE} once it is cloned.`);
+  }
+  // Refused before the app is made: an app whose clone fails still exists.
+  const directory = name === undefined ? undefined : directoryFor(name);
+  if (directory !== undefined && existsSync(directory)) {
+    throw new Error(`${directory} is already here. Give the app another name, or run this somewhere else.`);
+  }
   const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION);
   const app = data.builderCreateApp;
-  console.log(`\n  ${describeApp(app)}`);
-  console.log(`  ${NAME_HINT}`);
+  console.log(`\n  ${describeApp(name === undefined ? app : { ...app, name })}`);
+  if (name === undefined) console.log(`  ${NAME_HINT}`);
   if (options.noClone) {
     console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
     console.log(`  ${SKILL_HINT}\n`);
     return;
   }
-  try {
-    const { name: directory } = await cloneRepo(app.id, undefined, options);
-    console.log(`  cd ${directory} && npm install\n`);
-  } catch (error) {
-    console.log(`  The app is made, but its repo is not on this computer: ${error instanceof Error ? error.message : String(error)}`);
-    console.log(`  Try again with \`bankroll apps clone ${app.id}\`.\n`);
-  }
+  const clone = await cloneRepo(app.id, directory, options).catch((error: unknown) => {
+    const again = `bankroll apps clone ${app.id}${directory === undefined ? '' : ` ${directory}`}`;
+    console.log(`  The app is made, but its repo is not on this computer: ${reason(error)}`);
+    console.log(`  Try again with \`${again}\`${name === undefined ? '' : `, then name it in ${DECLARATION_FILE}`}.\n`);
+  });
+  if (!clone) return;
+  if (name !== undefined) console.log(`  ${declared(clone.target, name)}`);
+  console.log(`  cd ${clone.name} && npm install\n`);
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {

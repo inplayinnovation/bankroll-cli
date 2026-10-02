@@ -21,6 +21,7 @@ npm i -g @joinbankroll/cli          # once per machine
 bankroll login                      # opens the browser; log in with a phone number, approve the code
 bankroll apps                       # your apps, each with its latest run's state
 bankroll apps create                # a new app from the starter, cloned into ./br-<id>-xxxxxx
+bankroll apps create "Its Name"     # the same, named: the name is committed in the clone, ./its-name
 bankroll apps clone <id>            # an app you already have, if its repo is not here
 bankroll apps publish <id>          # list it for everyone: from then on real players pay
 bankroll --help                     # discover the rest; do not recall commands from memory
@@ -32,12 +33,17 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
 ## Build: create, clone, run
 
 1. `bankroll apps create`. It makes the app and clones its repo here; `cd`
-   into the directory it prints, then `npm install`. For an app that already
-   exists, `bankroll apps clone <id>`.
+   into the directory it prints, then `npm install`. If the user has already
+   named the app, pass the name: `bankroll apps create "Free Throw Duel"` also
+   writes it into `bankroll-app.json`, commits it, and clones into
+   `./free-throw-duel`. For an app that already exists,
+   `bankroll apps clone <id>`.
 2. Name the app in `bankroll-app.json` at the root of the repo, next to
-   drawing its icon: `{ "name": "Free Throw Duel" }`. Bankroll signs that name
-   into the app's manifest on the next push, and the name in the manifest is
-   the name a player sees. An app with no name answers to its address.
+   drawing its icon: `{ "name": "Free Throw Duel" }`, unless `create` was
+   given the name. Bankroll signs that name into the app's manifest on the
+   next push, and the name in the manifest is the name a player sees. Until a
+   push carries one the app has no name, and `bankroll apps` lists it as
+   `Unnamed app`.
 3. Look for `.env.development` at the project root. Bankroll writes it when
    it creates an app, with `STORE=fs`, `BANKROLL_MOCK=1`, and the app's payee,
    owner, and wallet id, and `next dev` reads it. An older app has none; give

@@ -3,7 +3,8 @@
 // one repo, good for an hour; git asks the helper for one on every fetch and
 // push, so nothing is written to disk and the hour never bites.
 import { spawnSync } from 'node:child_process';
-import { basename, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 
 import { graphql } from './api';
 import { resolveEnvironment } from './environments';
@@ -19,6 +20,9 @@ export const REMOTE = 'bankroll';
 const TOKEN_USER = 'x-access-token';
 // The helper subcommand; git runs it as `<command> get`.
 export const CREDENTIAL_COMMAND = 'git-credential';
+// Where an app says what it is, at the root of its repo. Bankroll signs what
+// this file declares in the commit it builds, starting with the name.
+export const DECLARATION_FILE = 'bankroll-app.json';
 
 interface RepoTokenData {
   builderRepoToken: { repo: string; token: string; expiresAt: string };
@@ -62,6 +66,35 @@ export function credentialReply(token: string): string {
   return `username=${TOKEN_USER}\npassword=${token}\n`;
 }
 
+/**
+ * The directory a named app is cloned into: "Free Throw Duel" lands in
+ * free-throw-duel. Undefined when nothing of the name can be a path, and the
+ * repo's own name stands in.
+ */
+export function directoryFor(name: string): string | undefined {
+  const directory = name
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return directory === '' ? undefined : directory;
+}
+
+/** The declaration with the name in it, beside whatever else the app declares. */
+export function withName(declaration: string, name: string): string {
+  const declared: unknown = JSON.parse(declaration);
+  if (typeof declared !== 'object' || declared === null || Array.isArray(declared)) {
+    throw new Error(`${DECLARATION_FILE} does not hold a JSON object`);
+  }
+  return `${JSON.stringify({ ...declared, name }, null, 2)}\n`;
+}
+
+/** `git commit` arguments for the name: that one file, whatever else has changed. */
+export function nameCommitArgs(target: string, name: string): string[] {
+  return ['-C', target, 'commit', '--quiet', '-m', `Name the app ${name}`, '--', DECLARATION_FILE];
+}
+
 const locationFor = (options: AccountOptions) => sessionLocation(resolveEnvironment(options.env));
 
 async function repoToken(appId: string, options: AccountOptions): Promise<RepoTokenData['builderRepoToken']> {
@@ -95,6 +128,17 @@ export async function cloneRepo(
   console.log(`  The remote is named ${REMOTE}: \`git push ${REMOTE} main\` saves your changes to the app's repo.`);
   console.log(`  ${SKILL_HINT}`);
   return { name, target, repo };
+}
+
+/**
+ * A name given to `apps create`, put where the app declares it and committed,
+ * so the first push carries it. False when git would not commit: the file
+ * names the app all the same, and the caller says to commit it.
+ */
+export function declareName(target: string, name: string): boolean {
+  const path = join(target, DECLARATION_FILE);
+  writeFileSync(path, withName(existsSync(path) ? readFileSync(path, 'utf8') : '{}', name));
+  return spawnSync('git', nameCommitArgs(target, name), { stdio: 'inherit' }).status === 0;
 }
 
 /**
