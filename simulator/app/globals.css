@@ -134,7 +134,8 @@ body {
     font-weight: 600;
   }
 
-  .menu-select optgroup + optgroup {
+  .menu-select optgroup + optgroup,
+  .menu-select option + optgroup {
     margin-top: 5px;
     border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
     padding-top: 6px;
@@ -271,6 +272,22 @@ body {
 
 .control-button:active {
   background: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+/* A line under the controls, for what the simulator shows and a phone would
+   not. Closer to the controls than the stage's gap puts it. */
+.stage-note {
+  flex: none;
+  margin-top: -8px;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* The device makes room for that line. */
+.stage-fit:has(.stage-note) {
+  --stage-controls: 76px;
 }
 
 /* --- Device --------------------------------------------------------------- */

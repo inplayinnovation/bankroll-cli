@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { keyboardToApp } from "@/lib/app-keyboard";
 import { hostOf, originOf } from "@/lib/apps";
 import { attachFrame, detachFrame, greet } from "@/lib/host-log";
 
@@ -26,6 +27,11 @@ export function AppFrame({ url }: { url: string }) {
     greet(origin);
     return () => detachFrame(element);
   }, [origin]);
+
+  // Keys pressed anywhere on the page go to the app: see lib/app-keyboard.ts.
+  useEffect(() => {
+    if (frame.current) return keyboardToApp(frame.current);
+  }, [url]);
 
   return <iframe key={url} ref={frame} className="app-frame" src={url} title={hostOf(url)} allow="autoplay; clipboard-write; fullscreen; gamepad" onLoad={() => greet(origin)} />;
 }

@@ -1,12 +1,16 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { DEVICES, ORIENTATIONS, type DeviceSpec, type Orientation } from "@/lib/devices";
+import { DEVICES, ORIENTATIONS, shownOnPhones, type DeviceSpec, type Orientation } from "@/lib/devices";
 import { saveTheme } from "@/lib/settings";
 import { useShell } from "./device-provider";
 
 // Devices arrive in menu order, newest generation first.
 const FAMILIES = [...Map.groupBy(DEVICES, (device: DeviceSpec) => device.family)];
+
+// The ways up a phone shows an app, and under a heading of their own the ones only the simulator does.
+const ON_PHONES = ORIENTATIONS.filter(({ id }) => shownOnPhones(id));
+const SIMULATOR_ONLY = ORIENTATIONS.filter(({ id }) => !shownOnPhones(id));
 
 // Flips between light and dark. Landing back on what the system uses drops the
 // override, so the page goes back to following the system setting.
@@ -26,9 +30,10 @@ function toggleTheme() {
 export function TopBar() {
   const { device, orientation, setDevice, setOrientation } = useShell();
 
-  // Hand the keyboard back afterwards, or arrow keys keep changing the menu
-  // instead of reaching the game. Deferred, because a closing picker returns
-  // focus to its select after this event.
+  // Let go of the keyboard afterwards, or arrow keys keep changing the menu
+  // instead of reaching the game: with an app open, focus that is let go
+  // returns to it (lib/app-keyboard.ts). Deferred, because a closing picker
+  // returns focus to its select after this event.
   const change = (apply: (value: string) => void) => (event: ChangeEvent<HTMLSelectElement>) => {
     const select = event.target;
     apply(select.value);
@@ -54,11 +59,18 @@ export function TopBar() {
         value={orientation}
         onChange={change((value) => setOrientation(value as Orientation))}
       >
-        {ORIENTATIONS.map(({ id, label }) => (
+        {ON_PHONES.map(({ id, label }) => (
           <option key={id} value={id}>
             {label}
           </option>
         ))}
+        <optgroup label="Not in the Bankroll app">
+          {SIMULATOR_ONLY.map(({ id, label }) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </optgroup>
       </select>
       <button
         type="button"
@@ -66,7 +78,6 @@ export function TopBar() {
         aria-label="Switch between light and dark"
         title="Switch between light and dark"
         onClick={toggleTheme}
-        onMouseDown={(event) => event.preventDefault()}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
           <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />

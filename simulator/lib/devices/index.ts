@@ -13,6 +13,13 @@ export const ORIENTATIONS: readonly { id: Orientation; label: string }[] = [
 export const DEFAULT_DEVICE_ID = "iphone-18-pro";
 export const DEFAULT_ORIENTATION: Orientation = "portrait";
 
+/**
+ * Whether a phone ever shows an app this way up. The Bankroll app is locked
+ * upright on a phone, so an app there is only ever seen in portrait. The
+ * simulator turns all the same, to try a layout out, and says so where it does.
+ */
+export const shownOnPhones = (orientation: Orientation) => orientation === "portrait";
+
 /** Falls back to the default device for unknown or missing ids. */
 export function getDevice(id: string | undefined): DeviceSpec {
   const device = DEVICES.find((candidate) => candidate.id === id) ?? DEVICES.find((candidate) => candidate.id === DEFAULT_DEVICE_ID);
