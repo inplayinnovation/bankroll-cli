@@ -4,3 +4,4 @@ dist/
 
 # Local pack artifacts — `npm pack` output, never committed.
 *.tgz
+.DS_Store
