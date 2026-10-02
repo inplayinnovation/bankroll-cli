@@ -43,12 +43,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* Pushed to the bottom while the stage above it is still empty. */}
           <footer className="mt-auto flex flex-none flex-col items-center pb-3 text-(--logo-ink)">
             <BankrollLogo className="h-5 w-auto" />
-            <p className="footer-tagline">The runtime for real-money apps</p>
             <p className="footer-secure">
               <svg width="10" height="12" viewBox="0 0 12 14" fill="currentColor" fillRule="evenodd" aria-hidden>
                 <path d="M6 0a3.75 3.75 0 0 0-3.75 3.75V6H1.5A1.5 1.5 0 0 0 0 7.5v5A1.5 1.5 0 0 0 1.5 14h9a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 10.5 6h-.75V3.75A3.75 3.75 0 0 0 6 0Zm2.25 6h-4.5V3.75a2.25 2.25 0 0 1 4.5 0V6Z" />
               </svg>
-              Secure
+              Secure Runtime
             </p>
           </footer>
         </div>

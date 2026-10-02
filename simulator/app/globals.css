@@ -189,25 +189,17 @@ body {
 
 /* --- Footer: the logo, what Bankroll is, and a lock ----------------------- */
 
-.footer-tagline {
-  margin-top: 7px;
-  color: color-mix(in srgb, var(--foreground) 62%, transparent);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
-}
-
 /* A lock and a word, the way a browser marks a site it reaches over a secure
    line. The logo's green on the dark desk. On the light one that green cannot
    be read, and a darker green of the same hue takes its place. */
 .footer-secure {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 3px;
+  gap: 4px;
+  margin-top: 8px;
   color: light-dark(#357409, #97f04a);
   color: light-dark(#357409, color(display-p3 0.5922 0.9412 0.2902));
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 16px;
 }
