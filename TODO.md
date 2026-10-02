@@ -5,7 +5,7 @@ Tick an item when it ships, and delete ticked items at the next release.
 
 ## Next release
 
-- [ ] **Release `apps create [name]`** — it is committed but not published. Bump the version, publish, and merge the README and the skill at the same moment: both already describe the argument, and 0.5.0 answers it with "too many arguments".
+- [ ] **Release `apps create [name]`** — it is on `main` but not published. Bump the version and publish soon: the README and the skill on `main` already describe the argument, and 0.5.0 answers it with "too many arguments".
 - [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches 0.5.x on its own. Bump it with every release.
 - [ ] **Docs quickstart and the starter's README: show the named form** — once released, `bankroll apps create "My App"`.
 
