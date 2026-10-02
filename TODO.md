@@ -5,21 +5,22 @@ Tick an item when it ships, and delete ticked items at the next release.
 
 ## Next release
 
-- [ ] **Release `apps create [name]`** — it is on `main` but not published. Bump the version and publish soon: the README and the skill on `main` already describe the argument, and 0.5.0 answers it with "too many arguments".
-- [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches 0.5.x on its own. Bump it with every release.
-- [ ] **Docs quickstart and the starter's README: show the named form** — once released, `bankroll apps create "My App"`.
+- [ ] **Release what is on `main`** — `apps create [name]`, `dev --simulator` and the simulator it serves, and the out-of-date notice. Bump the version and publish: the README and the skill already describe all of it, and 0.5.0 knows none of it.
+- [ ] **The SDK release the simulator needs** — the sidebar lists an app's calls only from `@joinbankroll/sdk` 0.33.0 on, which is where the stand-in host starts telling it. Until that is published an app runs in the simulator and the list stays empty.
+- [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches a newer CLI, or its simulator, on its own. Bump it with every release.
+- [ ] **Starter: the SDK's `MockHost`** — once the SDK has it, replace `src/app/app/mock-host.tsx` with the one from `@joinbankroll/sdk/next`.
+- [ ] **Docs** — the quickstart and the starter's README can show `bankroll apps create "My App"`; local development needs a section on `dev --simulator`.
 
 ## The simulator
 
-A desktop phone for testing an app without a physical one, served by `bankroll dev`.
-
-- [ ] **Serve it from `bankroll dev`** — built into this package as static files, served on localhost and opened in the browser. The tunnel and the QR stay, for real phones. It moves into this repo once it can load an app by URL.
-- [ ] **Say when the CLI is out of date** — the simulator is pinned to the CLI's version, and nothing tells a developer that a newer one is published.
+- [ ] **Control from the sidebar** — choose how a call turns out: a declined payment, a dismissed sheet. Today the stand-in host answers by itself and the sidebar only watches.
+- [ ] **Real sessions** — a switch from the pretend user to a real Bankroll session, with the login this CLI already holds. Until then the home screen has nothing to gain from listing the account's deployed apps: outside Bankroll they only say to open them in Bankroll.
+- [ ] **The out-of-date notice, in the page** — `dev` says it in the terminal, where the simulator's user is not looking.
+- [ ] **Apps that are not Bankroll apps** — they load, and get an empty sidebar. Nothing more is decided.
+- [ ] **Check Safari and Firefox** — it has only been used in Chrome.
+- [ ] **iPhone 18 Pro's Dynamic Island** — its size in `simulator/lib/devices/metrics.ts` is provisional.
 
 ## Proposed, not decided
 
-- [ ] **`BANKROLL_SIMULATOR_URL`** — point `dev` at a running simulator dev server in place of the bundled files, for working on the simulator itself.
-- [ ] **A dogfood script** — one command for working on the SDK, the simulator and an app together: the simulator's dev server, an SDK watch build copied into the app's `node_modules`, and `bankroll dev` in the app. Copied, not linked: Turbopack does not resolve a linked package outside the app's root.
-- [ ] **`dev` without the tunnel** — for simulator-only work, where a new tunnel on every restart is time spent on nothing.
 - [ ] **The credential helper and the PATH** — a clone's git helper runs `bankroll` from the PATH. Where that is missing (another Node version under nvm) or is another program, fetch and push fail with nothing pointing at the cause. Check at clone time, or make the helper not depend on the PATH.
 - [ ] **`create-bankroll-app`** — the docs no longer point at `npm create @joinbankroll/app`. Fold what is left of it into the CLI, or retire it.
