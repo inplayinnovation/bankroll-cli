@@ -20,6 +20,7 @@ Tick an item when it ships, and delete ticked items at the next release.
 - [ ] **Check Safari and Firefox** — it has only been used in Chrome. The keyboard going to the app (`simulator/lib/app-keyboard.ts`) is the part most likely to differ: it rests on how a browser moves focus into a frame.
 - [ ] **A game controller** — the frame allows the browser's Gamepad API and nothing else should be needed, but none has been plugged in to see. The same goes for a controller paired with a phone, inside Bankroll.
 - [ ] **Pull to refresh and swipe back** — the Bankroll app's web view has both, and the simulator has neither, so an app's own drag or swipe never meets them here. Skipped for now.
+- [ ] **Landscape** — listed in the Orientation menu, greyed out as not yet available: the Bankroll app is portrait only on a phone. The simulator's phone can already turn, and the menu is all that holds it upright, for the day Bankroll turns.
 - [ ] **iPhone 18 Pro's Dynamic Island** — its size in `simulator/lib/devices/metrics.ts` is provisional.
 
 ## Proposed, not decided
