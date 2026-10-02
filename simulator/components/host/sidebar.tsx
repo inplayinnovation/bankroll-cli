@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
-import { APP_PARAM, hostOf, parseAppUrl } from "@/lib/apps";
+import { hostOf } from "@/lib/apps";
 import { clearHostLog, useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
+import { useOpenApp } from "@/lib/open-app";
 
 // How long an app gets to report before the sidebar says why it may not be.
 const PATIENCE_MS = 2500;
@@ -15,11 +15,16 @@ const PATIENCE_MS = 2500;
  * opens to its calls, and its header flashes each time one is made.
  */
 export function HostSidebar() {
-  const url = parseAppUrl(useSearchParams().get(APP_PARAM) ?? "");
+  const url = useOpenApp();
 
   return (
     <aside className="sidebar" aria-label="Host calls">
-      {url ? <OpenAppCalls key={url} url={url} /> : <SidebarNote title="Host calls">Open an app to see what it asks of its host.</SidebarNote>}
+      {/* Empty until it is known whether an app is open: a note that an app replaces a moment later is a flicker. */}
+      {url === undefined ? null : url ? (
+        <OpenAppCalls key={url} url={url} />
+      ) : (
+        <SidebarNote title="Host calls">Open an app to see what it asks of its host.</SidebarNote>
+      )}
     </aside>
   );
 }

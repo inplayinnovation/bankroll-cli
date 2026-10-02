@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
-import { APP_PARAM, hostOf, launchUrl, openApp, parseAppUrl } from "@/lib/apps";
+import { APP_PARAM, hostOf, launchUrl, originOf, parseAppUrl } from "@/lib/apps";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
+import { openApp } from "@/lib/open-app";
 import { addSavedApp, removeSavedApp, useSavedApps } from "@/lib/saved-apps";
 import { AppIcon } from "./app-icon";
 
 /**
- * The home screen: one icon per app. Apps come from the developer's Bankroll
- * account (app/api/apps) and from URLs added here, which this browser keeps.
+ * The home screen: one icon per app. Apps come from whoever is serving the
+ * simulator (/api/apps: the app `bankroll dev --simulator` was run in) and
+ * from URLs added here, which this browser keeps.
  */
 export function Launcher() {
   const saved = useSavedApps();
-  const [account, setAccount] = useState<string[]>([]);
+  const [running, setRunning] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export function Launcher() {
       .then((response) => response.json())
       .then((body: { apps?: unknown }) => {
         const apps = Array.isArray(body.apps) ? body.apps.flatMap((app) => (typeof app === "string" ? (parseAppUrl(app) ?? []) : [])) : [];
-        if (current) setAccount(apps);
+        if (current) setRunning(apps);
       })
       .catch(() => {});
     return () => {
@@ -29,15 +31,17 @@ export function Launcher() {
     };
   }, []);
 
-  // An app that is both on the account and added by hand shows once, and cannot be removed here.
-  const added = (saved ?? []).filter((url) => !account.includes(url));
+  // The running app is always here and cannot be removed. Added by hand as
+  // well, under any of its pages, it still shows once.
+  const origins = new Set(running.map(originOf));
+  const added = (saved ?? []).filter((url) => !origins.has(originOf(url)));
 
   return (
     <div className="app-viewport launcher">
       {/* Nothing until the saved list is read: an empty screen for a moment, not a wrong one. */}
       {saved !== null && (
         <ul className="launcher-grid">
-          {account.map((url) => (
+          {running.map((url) => (
             <li key={url}>
               <AppTile url={url} />
             </li>

@@ -1,6 +1,6 @@
 "use client";
 
-import { goHome } from "@/lib/apps";
+import { goHome } from "@/lib/open-app";
 
 /** The row under the device. Home for now; other device controls go here too. */
 export function DeviceControls() {

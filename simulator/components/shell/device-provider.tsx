@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { frameGeometry, getDevice, safeAreaInsets, type DeviceSpec, type FrameGeometry, type Insets, type Orientation } from "@/lib/devices";
-import { DEVICE_COOKIE, ORIENTATION_COOKIE, writeSettingCookie } from "@/lib/settings";
+import { saveDevice, saveOrientation, useDeviceSettings } from "@/lib/settings";
 
 interface Shell {
   device: DeviceSpec;
@@ -15,35 +15,26 @@ interface Shell {
 
 const ShellContext = createContext<Shell | null>(null);
 
-export function DeviceProvider({
-  initialDeviceId,
-  initialOrientation,
-  children,
-}: {
-  initialDeviceId: string;
-  initialOrientation: Orientation;
-  children: ReactNode;
-}) {
-  const [deviceId, setDeviceId] = useState(initialDeviceId);
-  const [orientation, setOrientationState] = useState(initialOrientation);
+export function DeviceProvider({ children }: { children: ReactNode }) {
+  const settings = useDeviceSettings();
 
-  const shell = useMemo<Shell>(() => {
-    const device = getDevice(deviceId);
+  const shell = useMemo<Shell | null>(() => {
+    if (!settings) return null;
+    const device = getDevice(settings.deviceId);
     return {
       device,
-      orientation,
-      geometry: frameGeometry(device, orientation),
-      safeArea: safeAreaInsets(device, orientation),
-      setDevice(id) {
-        setDeviceId(id);
-        writeSettingCookie(DEVICE_COOKIE, id);
-      },
-      setOrientation(next) {
-        setOrientationState(next);
-        writeSettingCookie(ORIENTATION_COOKIE, next);
-      },
+      orientation: settings.orientation,
+      geometry: frameGeometry(device, settings.orientation),
+      safeArea: safeAreaInsets(device, settings.orientation),
+      setDevice: saveDevice,
+      setOrientation: saveOrientation,
     };
-  }, [deviceId, orientation]);
+  }, [settings]);
+
+  // Which phone to draw is kept in the browser, and the page's HTML was written
+  // before any browser was asked. Until it is known nothing is drawn: an empty
+  // desk for a moment, not the wrong phone.
+  if (!shell) return null;
 
   return <ShellContext value={shell}>{children}</ShellContext>;
 }

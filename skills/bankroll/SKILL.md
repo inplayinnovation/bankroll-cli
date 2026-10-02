@@ -72,7 +72,11 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
    `checks/`. Under `BANKROLL_MOCK=1` the app also puts the stand-in host on
    its own page, so `http://localhost:3000/app` runs in any browser as the
    pretend user (an app from before 2026-09-26 lacks this and shows "Open this
-   in Bankroll" in a browser; use `npm run check` there).
+   in Bankroll" in a browser; use `npm run check` there). When the user wants
+   to look at the app themselves, `npm run dev -- --simulator` opens it in a
+   phone frame in their browser, as the pretend user, with every call the app
+   makes to its host listed beside it. It keeps running: start it as a
+   background task, and add `--no-open` when nobody is at the screen.
 6. On a phone: `npm run dev` runs the dev server behind a public tunnel and
    prints a QR that opens the app inside Bankroll, with real sessions and real
    charges paid to a dev signing key at `~/.config/bankroll/keypair.json`.

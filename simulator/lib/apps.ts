@@ -1,10 +1,10 @@
 // The apps the simulator opens: web apps on their own origin, loaded by URL
 // onto the phone's screen.
 
-/** Which app is open, in the page's own URL: `/?app=http://localhost:3001/app`. */
+/** Which app is open, in the page's own URL: `/?app=http://localhost:3000/app` (see lib/open-app.ts). */
 export const APP_PARAM = "app";
 
-/** What the simulator learns about an app from its origin (see app/api/manifest). */
+/** What the simulator learns about an app from its origin, asked through /api/manifest (see lib/manifests.ts). */
 export interface AppManifest {
   /** True when the origin serves a Bankroll manifest. */
   bankroll: boolean;
@@ -58,14 +58,4 @@ export function namesNoPage(url: string): boolean {
 export function launchUrl(url: string, manifest: AppManifest | null): string {
   if (!namesNoPage(url) || !manifest?.launch) return url;
   return new URL(manifest.launch, originOf(url)).href;
-}
-
-/** Puts an app on the screen. The history entry is real: Back returns to the home screen. */
-export function openApp(url: string) {
-  window.history.pushState(null, "", `?${new URLSearchParams({ [APP_PARAM]: url })}`);
-}
-
-/** Back to the home screen. */
-export function goHome() {
-  window.history.pushState(null, "", window.location.pathname);
 }

@@ -19,7 +19,9 @@ function subscribe(onChange: () => void) {
 }
 
 /**
- * Asks the app what it is, through this page's own server (app/api/manifest).
+ * Asks the app what it is. The page cannot ask the app itself: the app is
+ * another origin, and its manifest carries no CORS header. It asks whoever
+ * serves the simulator, at /api/manifest, which is the CLI (src/simulator.ts).
  * Never rejects: an app that cannot be reached is not a Bankroll app right now.
  */
 export async function askManifest(url: string): Promise<AppManifest> {

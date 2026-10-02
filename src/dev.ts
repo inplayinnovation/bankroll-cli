@@ -9,19 +9,29 @@
 // app over the public internet rather than the local network, this also works
 // on networks that isolate clients from each other (most hotel, venue, and
 // in-flight Wi-Fi).
-import { spawn } from 'node:child_process';
+//
+// `--simulator` is the other way to look at the app: no phone and no tunnel,
+// the app in a phone frame in this computer's browser, as a pretend user
+// (src/simulator.ts).
+import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { delimiter, join } from 'node:path';
 
 import { bin, install, Tunnel } from 'cloudflared';
 
+import { openBrowser } from './browser';
 import { loadSigner } from './keypair';
 import { qrLines, qrTextLines } from './qr';
+import { serveSimulator } from './simulator';
+import { updateNotice } from './update';
 
 const DEV_COMMAND = 'next';
 const DEV_ARGS = ['dev'];
 const TUNNEL_TIMEOUT_MS = 20_000;
+// How long a dev server gets to answer its first request, and how often it is asked.
+const SERVER_TIMEOUT_MS = 60_000;
+const SERVER_POLL_MS = 250;
 
 // cloudflared logs its own control-plane host while requesting the tunnel, and
 // the library matches any *.trycloudflare.com hostname — so this one arrives
@@ -34,10 +44,17 @@ const MANIFEST_TIMEOUT_MS = 5_000;
 
 // The dev server reads this; it is never written to a file.
 const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
+// What makes the app's server accept the SDK's stand-in host, and its page
+// carry one: the pretend user the simulator shows the app to.
+const MOCK_ENV = 'BANKROLL_MOCK';
 
 export interface DevOptions {
   port?: string;
   keypair?: string;
+  /** The app in the simulator on this computer, in place of the tunnel and the QR. */
+  simulator?: boolean;
+  /** False to print the simulator's link and leave the browser alone, for a shell with nobody at it. */
+  open?: boolean;
 }
 
 /**
@@ -126,10 +143,66 @@ async function openTunnel(port: string): Promise<{ origin: string | null; stop: 
   return { origin, stop: () => tunnel.stop() };
 }
 
-export async function dev(options: DevOptions): Promise<void> {
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** True once the dev server answers anything at all; false if it never does. */
+async function serverReady(port: string): Promise<boolean> {
+  const deadline = Date.now() + SERVER_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      await fetch(`http://localhost:${port}${MANIFEST_PATH}`, { signal: AbortSignal.timeout(MANIFEST_TIMEOUT_MS) });
+      return true;
+    } catch {
+      await wait(SERVER_POLL_MS);
+    }
+  }
+  return false;
+}
+
+/**
+ * The simulator's half of `dev`: the page that shows the app, served from this
+ * computer and opened in the browser, on the app's launch path.
+ *
+ * There is no tunnel to wait for here, so the dev server may not be up yet:
+ * the browser is opened once it answers, not on a page that refuses to load.
+ */
+async function simulate(port: string, child: ChildProcess, notice: Promise<string | null>, open: boolean): Promise<void> {
+  let stop = () => {};
+  const shutdown = () => {
+    stop();
+    child.kill();
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+  // Before the wait below, so a dev server that dies at once ends this too.
+  child.on('exit', (code) => {
+    stop();
+    process.exit(code ?? 0);
+  });
+
+  if (!(await serverReady(port))) {
+    console.warn(`\n  The dev server has not answered on port ${port}, so the simulator was not opened.\n`);
+    return;
+  }
+  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(port)}`).catch((error: unknown) => {
+    // No simulator is a failure of the whole command: the dev server goes with it.
+    child.kill();
+    throw error;
+  });
+  stop = simulator.stop;
+
+  const update = await notice;
+  console.log(`\n  Your app is open in the simulator, as a pretend user: no money moves.\n  ${simulator.url}\n`);
+  if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
+  if (open) openBrowser(simulator.url);
+}
+
+export async function dev(options: DevOptions, version: string): Promise<void> {
   // An explicit choice wins; otherwise take whatever is free.
   const port = options.port ?? process.env.PORT ?? String(await freePort());
   const signer = loadSigner(options.keypair);
+  // Asked now, said at the end, beside the link.
+  const notice = updateNotice(version);
 
   if (signer.created) {
     console.log(`
@@ -160,8 +233,16 @@ export async function dev(options: DevOptions): Promise<void> {
       // Injected into this process only. The secret never reaches .env.local,
       // so it cannot be committed and does not survive the session.
       [TREASURY_KEY_ENV]: signer.secretKey,
+      // The simulator has no host but the stand-in. Set here and not left to
+      // the app's .env files, which an older app does not have.
+      ...(options.simulator ? { [MOCK_ENV]: '1' } : {}),
     },
   });
+
+  if (options.simulator) {
+    await simulate(port, child, notice, options.open !== false);
+    return;
+  }
 
   const { origin, stop } = await openTunnel(port);
 
@@ -196,4 +277,6 @@ export async function dev(options: DevOptions): Promise<void> {
   console.log('');
   for (const line of plain ? qrTextLines(link) : qrLines(link)) console.log('  ' + line);
   console.log(`\n  Scan to open the app on your phone\n  ${target}\n  Play link: ${link}\n`);
+  const update = await notice;
+  if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
 }

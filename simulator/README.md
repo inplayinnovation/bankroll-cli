@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The simulator
 
-## Getting Started
+A phone on your desk for a Bankroll app: the app in an iPhone frame, and beside
+it every call the app makes to its host.
 
-First, run the development server:
+`bankroll dev --simulator` opens it. It ships inside `@joinbankroll/cli` as
+static files: `npm run build` in the repo root builds it into `dist/simulator`,
+and the CLI serves it from there (`src/simulator.ts`).
+
+## How it fits together
+
+- **The app** is a web page on its own origin, shown in a frame
+  (`components/shell/app-frame.tsx`). Which app is open is in the page's URL:
+  `/?app=http://localhost:3000/app`.
+- **The sidebar** (`components/host/sidebar.tsx`) lists the app's host calls.
+  The app is another origin, so nothing of it can be read from here: the SDK's
+  stand-in host tells this page each call in window messages
+  (`lib/host-log.ts`, and `SimulatorMessage` in `@joinbankroll/sdk/mock`). That
+  needs `@joinbankroll/sdk` 0.33.0 in the app, running with `BANKROLL_MOCK=1`.
+- **Two paths on its own origin** are answered by whoever serves the page,
+  which is the CLI: `/api/manifest?url=` reads an app's manifest, which the
+  page cannot fetch across origins, and `/api/apps` names the app the CLI is
+  running.
+- **Settings** (device, orientation, theme) and the apps added by hand are kept
+  in the browser's localStorage.
+
+## Working on it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install          # here, once
+npm run dev          # http://localhost:4100, hot reloading
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run dev` serves the page only. The two `/api` paths are handed to the
+CLI's server at `http://localhost:4101` (`BANKROLL_SIMULATOR_API` changes
+that), so run it alongside the CLI. `npm run dogfood -- <app directory>` in the
+repo root starts both, with an app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## The device art
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`public/devices` and `lib/devices/generated.ts` are generated from a local
+Xcode install by `npm run devices:extract`, and committed. Safe areas and
+Dynamic Island sizes are kept by hand in `lib/devices/metrics.ts`.

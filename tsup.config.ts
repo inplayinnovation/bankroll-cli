@@ -10,7 +10,9 @@ const { version } = JSON.parse(readFileSync('./package.json', 'utf8'))
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm'],
-  clean: true,
+  // dist also holds the built simulator, which this must not remove on every
+  // rebuild in watch mode. scripts/build.mjs empties dist before a full build.
+  clean: false,
   target: 'node20',
   define: { __VERSION__: JSON.stringify(version) },
   // A CLI is executed, not imported, so one file beats a dozen chunks.

@@ -1,12 +1,11 @@
 {
-  "name": "bankroll-console",
-  "version": "0.1.0",
+  "name": "bankroll-simulator",
   "private": true,
   "scripts": {
     "dev": "next dev -p 4100",
     "build": "next build",
-    "start": "next start -p 4100",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
     "devices:extract": "node scripts/extract-device-chrome.mjs"
   },
   "dependencies": {

@@ -2,7 +2,7 @@
 
 import type { ChangeEvent } from "react";
 import { DEVICES, ORIENTATIONS, type DeviceSpec, type Orientation } from "@/lib/devices";
-import { THEME_COOKIE, clearSettingCookie, writeSettingCookie } from "@/lib/settings";
+import { saveTheme } from "@/lib/settings";
 import { useShell } from "./device-provider";
 
 // Devices arrive in menu order, newest generation first.
@@ -16,10 +16,10 @@ function toggleTheme() {
   const next = (root.dataset.theme ?? system) === "dark" ? "light" : "dark";
   if (next === system) {
     delete root.dataset.theme;
-    clearSettingCookie(THEME_COOKIE);
+    saveTheme(undefined);
   } else {
     root.dataset.theme = next;
-    writeSettingCookie(THEME_COOKIE, next);
+    saveTheme(next);
   }
 }
 

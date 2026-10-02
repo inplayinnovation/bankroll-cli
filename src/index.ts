@@ -38,9 +38,11 @@ program
   .description('Run the dev server behind a public tunnel and print a QR to open it on a phone')
   .option('-p, --port <port>', 'port to use (default: any free one — the tunnel hides it)')
   .option('-k, --keypair <path>', KEYPAIR_HELP)
+  .option('--simulator', 'open the app in a phone on this computer instead, as a pretend user: no tunnel, no QR, no money')
+  .option('--no-open', "with --simulator, print its link and leave the browser alone")
   .action(async (options) => {
     const { dev } = await lazy.dev();
-    await dev(options);
+    await dev(options, __VERSION__);
   });
 
 program

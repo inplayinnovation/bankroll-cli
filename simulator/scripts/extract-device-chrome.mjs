@@ -7,7 +7,7 @@
 // types) and pdftocairo (`brew install poppler`). The output is committed, so
 // this only has to run when the device list changes.
 //
-// The art is Apple's. Keep the repo and anything deployed from it private.
+// The art is Apple's, taken from the Xcode install on the machine this runs on.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";

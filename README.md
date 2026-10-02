@@ -8,6 +8,7 @@ bankroll login                           # your Bankroll account
 bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
 cd free-throw-duel && npm install        # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
+npm run dev -- --simulator               # or the app in a phone on this computer, as a pretend user
 git push bankroll main                   # Bankroll builds and deploys it
 ```
 
@@ -33,6 +34,7 @@ bankroll apps publish <id>                      listed for everyone
 bankroll apps unpublish <id>                    unlisted; still playable by link
 
 bankroll dev                                    tunnel + QR, injects your key
+bankroll dev --simulator                        the app in a phone on this computer, no tunnel
 ```
 
 ### `bankroll dev`
@@ -55,6 +57,29 @@ which is how coding agents run it — the QR is bare block glyphs instead, safe 
 re-print into a chat transcript, where ANSI would be stripped and the colored
 form would collapse into a wall of `▀`. Setting `NO_COLOR` forces the bare form
 on a TTY too. The full play link is printed under the QR either way.
+
+### `bankroll dev --simulator`
+
+The other way to look at your app: no phone and no tunnel. Your browser opens a
+page with the app in an iPhone frame, and beside it a list of every call the
+app makes to its host, each with what went in and what came back.
+
+```bash
+npm run dev -- --simulator
+```
+
+The app runs as a pretend user. `dev` sets `BANKROLL_MOCK=1` for it, so the
+SDK's stand-in host answers in place of Bankroll: sessions and charges work, and
+no money moves. That is the difference from the phone, where the session and
+the money are real. The simulator shows the app's calls from
+`@joinbankroll/sdk` 0.33.0 on; on an older SDK the app still runs and the list
+stays empty.
+
+The page is served from this computer alone, at `http://localhost:4100`, or the
+next free port. `--no-open` prints the link and leaves the browser alone.
+
+The simulator is part of this package, so it is as new as your CLI. `dev` says
+so when a newer CLI is published.
 
 ## The signing key
 
@@ -135,3 +160,24 @@ ends the access.
 
 `dev` needs no account: it is local, and the only credential it uses is the
 signing key.
+
+## Working on this repo
+
+```bash
+npm install
+npm run build        # the CLI into dist/, and the simulator into dist/simulator
+npm test
+npm run typecheck
+```
+
+The simulator is a project of its own in [`simulator/`](./simulator), with its
+own dependencies; only its built files ship. Its README says how it fits
+together.
+
+`npm run dogfood -- ../my-app` is for working on the CLI, the SDK, the
+simulator and an app at once. It runs the app through this repo's
+`bankroll dev --simulator`, and keeps four things current on every save: the
+SDK (rebuilt, and copied into the app's `node_modules`), the CLI (rebuilt, and
+the app restarted with it), the simulator (its own dev server, hot reloading),
+and the app. It looks for the SDK in `../bankroll-sdk`; `BANKROLL_SDK` names
+another place.
