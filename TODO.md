@@ -6,7 +6,7 @@ Tick an item when it ships, and delete ticked items at the next release.
 ## Next release
 
 - [ ] **Release what is on `main`** — `apps create [name]`, `dev --simulator` and the simulator it serves, and the out-of-date notice. Bump the version and publish: the README and the skill already describe all of it, and 0.5.0 knows none of it.
-- [ ] **The SDK release the simulator needs** — the sidebar lists an app's calls, and the app learns the phone's safe area, only from `@joinbankroll/sdk` 0.33.0 on, which is where the stand-in host starts talking to a simulator. Until that is published an app runs in the simulator with an empty list and its content under the status bar. The starter pins `^0.32.0`: move it to 0.33.0 with the release.
+- [ ] **The SDK release the simulator needs** — the sidebar lists an app's calls, and the app learns the phone's safe area, only from `@joinbankroll/sdk` 0.33.0 on, which is where the stand-in host starts talking to a simulator. Until that is published an app runs in the simulator with an empty list and its content under the status bar. The starter pins `^0.32.0`: move it to 0.33.0 with the release, and in the same change add `bankroll.init()` at the top of `src/lib/client/bankroll.ts`. From 0.33.0 every call but `status()` fails without it.
 - [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches a newer CLI, or its simulator, on its own. Bump it with every release.
 - [ ] **Starter: the SDK's `MockHost`** — once the SDK has it, replace `src/app/app/mock-host.tsx` with the one from `@joinbankroll/sdk/next`.
 - [ ] **Docs** — the quickstart and the starter's README can show `bankroll apps create "My App"`; local development needs a section on `dev --simulator`.
@@ -15,7 +15,7 @@ Tick an item when it ships, and delete ticked items at the next release.
 
 - [ ] **Control from the sidebar** — choose how a call turns out: a declined payment, a dismissed sheet. Today the stand-in host answers by itself and the sidebar only watches.
 - [ ] **Real sessions** — a switch from the pretend user to a real Bankroll session, with the login this CLI already holds. Until then the home screen has nothing to gain from listing the account's deployed apps: outside Bankroll they only say to open them in Bankroll.
-- [ ] **The out-of-date notice, in the page** — `dev` says it in the terminal, where the simulator's user is not looking.
+- [x] **The out-of-date notice, in the page** — at the bottom of the sidebar: a line each for the app's SDK and the CLI, marked when a later release is out, when the install is stale, and when it is a local build.
 - [ ] **Apps that are not Bankroll apps** — they load, and get an empty sidebar. Nothing more is decided.
 - [ ] **Check Safari and Firefox** — it has only been used in Chrome. The keyboard going to the app (`simulator/lib/app-keyboard.ts`) is the part most likely to differ: it rests on how a browser moves focus into a frame.
 - [ ] **A game controller** — the frame allows the browser's Gamepad API and nothing else should be needed, but none has been plugged in to see. The same goes for a controller paired with a phone, inside Bankroll.
