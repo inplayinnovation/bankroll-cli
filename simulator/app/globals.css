@@ -1,0 +1,780 @@
+@import "tailwindcss";
+
+:root {
+  /* Follows the system by default; the top bar's toggle pins it either way. */
+  color-scheme: light dark;
+  /* The "desk" the device sits on. */
+  --background: light-dark(#e9e9ec, #1b1b1d);
+  --foreground: light-dark(#1d1d1f, #f2f2f4);
+  /* The logo's wordmark: its own near-white on dark, the text colour on light. */
+  --logo-ink: light-dark(#1d1d1f, #f5f6f7);
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* The page itself never scrolls; only the phone's screen does. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-system);
+}
+
+/* --- Top bar ------------------------------------------------------------- */
+
+.top-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 28px;
+  font-size: 13px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--background) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  backdrop-filter: saturate(1.8) blur(20px);
+}
+
+/* A <select> dressed as a menu-bar title. Browsers without customizable
+   selects keep their native popup. */
+.menu-select {
+  appearance: none;
+  height: 22px;
+  padding: 0 22px 0 9px;
+  border: 0;
+  border-radius: 5px;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+  field-sizing: content;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' fill='none' stroke='%23808080' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l3 3 3-3'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+}
+
+.menu-select:hover,
+.menu-select:focus-visible,
+.menu-select:open,
+.top-bar-button:hover {
+  background-color: color-mix(in srgb, var(--foreground) 11%, transparent);
+}
+
+/* Sits at the right edge, out of the flow, so the menus stay centred. */
+.top-bar-button {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  border-radius: 5px;
+  color: color-mix(in srgb, var(--foreground) 75%, transparent);
+  cursor: default;
+}
+
+@supports (appearance: base-select) {
+  .menu-select,
+  .menu-select::picker(select) {
+    appearance: base-select;
+  }
+
+  .menu-select {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 0;
+  }
+
+  /* The chevron is already the background image. */
+  .menu-select::picker-icon {
+    display: none;
+  }
+
+  .menu-select::picker(select) {
+    margin-top: 5px;
+    padding: 5px;
+    border: 0;
+    border-radius: 9px;
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 400;
+    background: color-mix(in srgb, var(--background) 82%, transparent);
+    box-shadow:
+      0 0 0 0.5px color-mix(in srgb, var(--foreground) 22%, transparent),
+      0 10px 34px rgb(0 0 0 / 0.28);
+    backdrop-filter: saturate(1.8) blur(30px);
+  }
+
+  .menu-select optgroup {
+    padding-top: 2px;
+    color: color-mix(in srgb, var(--foreground) 55%, transparent);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .menu-select optgroup + optgroup {
+    margin-top: 5px;
+    border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+    padding-top: 6px;
+  }
+
+  .menu-select option {
+    gap: 5px;
+    min-block-size: 0;
+    padding: 3px 12px 3px 5px;
+    border-radius: 5px;
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+    background: transparent;
+  }
+
+  .menu-select option:hover,
+  .menu-select option:focus-visible {
+    color: #fff;
+    background: #0a63f5;
+    outline: none;
+  }
+
+  /* Keep the checkmark's column on unchecked rows so the names line up. */
+  .menu-select option::checkmark {
+    content: "\2713";
+    width: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    visibility: hidden;
+  }
+
+  .menu-select option:checked::checkmark {
+    visibility: visible;
+  }
+}
+
+/* The logo's green, as in the original file: Display P3 with an sRGB fallback. */
+.bankroll-logo-mark {
+  fill: #97f04a;
+  fill: color(display-p3 0.5922 0.9412 0.2902);
+}
+
+/* --- Stage: scale the device to fit -------------------------------------- */
+
+/* Registered so the container units resolve once, against .stage, and inherit
+   as plain values. Unregistered, they would be re-resolved by whichever element
+   uses them, and the phone screen is a container too. */
+@property --stage-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --stage-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --device-scale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+.stage {
+  container-type: size;
+}
+
+.stage-fit {
+  /* The controls row and its gap, which sit under the device. */
+  --stage-controls: 52px;
+  --stage-width: 100cqw;
+  --stage-height: 100cqh;
+  /* tan(atan2(a, b)) is a / b for two lengths, as a plain number. Leaves 20px
+     above and below and 16px either side, and never scales up: at 1, one CSS
+     pixel is one point. */
+  --device-scale: max(
+    0.2,
+    min(
+      1,
+      tan(atan2(calc(var(--stage-height) - var(--stage-controls) - 40px), calc(var(--device-height) * 1px))),
+      tan(atan2(calc(var(--stage-width) - 32px), calc(var(--device-width) * 1px)))
+    )
+  );
+  --fit-width: calc(var(--device-width) * var(--device-scale) * 1px);
+  --fit-height: calc(var(--device-height) * var(--device-scale) * 1px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: var(--fit-width);
+  /* Centred in the stage, but on whole pixels: half a pixel off would blur the
+     device at 100% on a 1x display. */
+  margin-left: max(0px, round(down, calc((var(--stage-width) - var(--fit-width)) / 2), 1px));
+  padding-top: max(0px, round(down, calc((var(--stage-height) - var(--fit-height) - var(--stage-controls)) / 2), 1px));
+}
+
+/* Holds the scaled footprint, since transforms do not affect layout. */
+.device-fit {
+  position: relative;
+  flex: none;
+  width: var(--fit-width);
+  height: var(--fit-height);
+}
+
+.device {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--device-width) * 1px);
+  height: calc(var(--device-height) * 1px);
+  transform: scale(var(--device-scale));
+  transform-origin: 0 0;
+}
+
+.control-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  transition: background-color 120ms;
+}
+
+.control-button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.control-button:active {
+  background: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+/* --- Device --------------------------------------------------------------- */
+
+.device-shadow {
+  position: absolute;
+  box-shadow:
+    0 28px 60px -18px rgb(0 0 0 / 0.42),
+    0 10px 22px -10px rgb(0 0 0 / 0.3);
+}
+
+.hardware {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.hardware-art {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.island {
+  position: absolute;
+  border-radius: 9999px;
+  background: #000;
+}
+
+.side-button {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.side-button-art,
+.side-button-down {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.side-button-art {
+  transition: translate 140ms ease-out;
+}
+
+.side-button:hover .side-button-art {
+  translate: var(--slide) 0;
+}
+
+.side-button-down {
+  left: 0;
+  width: 100%;
+  opacity: 0;
+}
+
+.side-button:active .side-button-down,
+.side-button[data-on] .side-button-down {
+  opacity: 1;
+}
+
+/* The phone's display. `contain` keeps position: fixed inside it, and the
+   named container lets the home screen lay itself out against the phone. */
+.screen {
+  position: absolute;
+  overflow: clip;
+  contain: strict;
+  container: screen / size;
+  isolation: isolate;
+  color: #fff;
+  background: #000;
+}
+
+/* An app: a frame over the whole display. Until its page paints, the screen's
+   black shows through, as a phone's does while an app launches. */
+.app-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  animation: app-open 200ms ease-out;
+}
+
+/* The home screen's scrolling viewport. */
+.app-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  isolation: isolate;
+  /* Opacity only: a transform here would capture position: fixed descendants. */
+  animation: app-open 200ms ease-out;
+}
+
+@keyframes app-open {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The status bar and home indicator. White, blended as a difference: light over
+   a dark page, dark over a light one, with nothing known about the page. */
+.system-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+/* --- Home screen ---------------------------------------------------------- */
+
+.launcher {
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  background: #101014;
+}
+
+/* Icon columns sit where iOS puts them: 4 across upright, 8 across in landscape. */
+.launcher-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 60px);
+  justify-content: space-between;
+  row-gap: 19px;
+  padding: 22px 27px 0;
+}
+
+@container screen (min-width: 42rem) {
+  .launcher-grid {
+    grid-template-columns: repeat(8, 60px);
+  }
+}
+
+.app-tile-slot {
+  position: relative;
+}
+
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 60px;
+  outline: none;
+  cursor: default;
+}
+
+.app-icon {
+  display: block;
+  width: 60px;
+  height: 60px;
+  border-radius: 22.37%;
+  transition: filter 80ms;
+}
+
+.app-icon-generated {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(160deg, hsl(var(--hue) 72% 60%), hsl(calc(var(--hue) + 24) 78% 42%));
+}
+
+.app-icon-add {
+  display: grid;
+  place-items: center;
+  padding-bottom: 3px;
+  color: rgb(255 255 255 / 0.75);
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1;
+  background: rgb(255 255 255 / 0.1);
+}
+
+/* Wider than the icon, as on iOS, so a name gets a little more room before it is cut. */
+.app-label {
+  width: 76px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* iOS dims an icon while it is pressed. */
+.app-tile:active > .app-icon {
+  filter: brightness(0.65);
+}
+
+.app-tile:focus-visible > .app-icon {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* The badge iOS puts on an icon to take it off the home screen; here on hover. */
+.app-remove {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #1c1c1e;
+  background: rgb(235 235 240 / 0.94);
+  opacity: 0;
+  transition: opacity 120ms;
+  cursor: default;
+}
+
+.app-tile-slot:hover .app-remove,
+.app-remove:focus-visible {
+  opacity: 1;
+}
+
+/* A sheet from the bottom of the screen. Fixed, so it stays put if the home
+   screen behind it scrolls; `.screen` contains it. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.5);
+  animation: app-open 160ms ease-out;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 430px;
+  padding: 20px 18px calc(var(--safe-bottom) + 12px);
+  border-radius: 24px 24px 0 0;
+  color: #fff;
+  font-size: 15px;
+  background: #1c1c1e;
+  animation: sheet-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 100%;
+  }
+}
+
+.sheet-label {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sheet-input {
+  width: 100%;
+  height: 44px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border-radius: 10px;
+  outline: none;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  background: rgb(118 118 128 / 0.24);
+}
+
+.sheet-input::placeholder {
+  color: rgb(235 235 245 / 0.3);
+}
+
+.sheet-input:focus-visible {
+  box-shadow: 0 0 0 2px #0a84ff;
+}
+
+.sheet-note {
+  min-height: 34px;
+  margin-top: 8px;
+  color: rgb(235 235 245 / 0.6);
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sheet-button {
+  flex: 1;
+  height: 46px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  background: rgb(118 118 128 / 0.24);
+  cursor: default;
+}
+
+.sheet-button-primary {
+  background: #0a84ff;
+}
+
+.sheet-button:active {
+  filter: brightness(0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-frame,
+  .app-viewport,
+  .sheet-backdrop,
+  .sheet {
+    animation: none;
+  }
+}
+
+/* --- Sidebar: what the open app asks of its host -------------------------- */
+
+.sidebar {
+  /* The flash a call gives its header. */
+  --flash: color-mix(in srgb, #0a84ff 38%, transparent);
+  --line: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --quiet: color-mix(in srgb, var(--foreground) 55%, transparent);
+
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 340px;
+  min-height: 0;
+  font-size: 13px;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--background) 92%, var(--foreground));
+}
+
+.sidebar-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar-subtitle {
+  overflow: hidden;
+  color: var(--quiet);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-button {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  cursor: default;
+}
+
+.sidebar-button:hover {
+  background: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.sidebar-empty,
+.sidebar-notice {
+  padding: 14px 16px;
+  color: var(--quiet);
+  line-height: 1.45;
+}
+
+.sidebar-notice {
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-notice code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.sidebar-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.call-section {
+  border-bottom: 1px solid var(--line);
+}
+
+.call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 14px 0 16px;
+  text-align: left;
+  cursor: default;
+}
+
+.call-header:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.call-chevron {
+  flex: none;
+  color: var(--quiet);
+  transition: rotate 120ms;
+}
+
+.call-header[aria-expanded="true"] .call-chevron {
+  rotate: 90deg;
+}
+
+.call-name {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.call-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+.call-count[data-none] {
+  color: var(--quiet);
+  font-weight: 500;
+  background: transparent;
+}
+
+.call-entries {
+  padding: 0 14px 10px 32px;
+}
+
+.call-entry {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.call-none {
+  padding: 6px 0 2px;
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+.call-when {
+  display: flex;
+  justify-content: space-between;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.call-facts {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  row-gap: 4px;
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.call-facts dt {
+  color: var(--quiet);
+}
+
+.call-facts pre {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.call-nothing {
+  color: var(--quiet);
+}
+
+.call-error {
+  color: light-dark(#c4281c, #ff6961);
+}

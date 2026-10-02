@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="32" viewBox="0 0 16 32">
+<defs>
+<filter id="filter-remove-color" x="0%" y="0%" width="100%" height="100%">
+<feColorMatrix color-interpolation-filters="sRGB" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0" />
+</filter>
+<filter id="filter-color-to-alpha" x="0%" y="0%" width="100%" height="100%">
+<feColorMatrix color-interpolation-filters="sRGB" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.2126 0.7152 0.0722 0 0"/>
+</filter>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 1 1 L 15 1 L 15 31 L 1 31 Z M 1 1 "/>
+</clipPath>
+<clipPath id="clip-1">
+<path clip-rule="evenodd" d="M 2.28125 1 L 15 1 L 15 31 L 2.28125 31 C 1.835938 31 1.675781 30.953125 1.511719 30.867188 C 1.347656 30.777344 1.222656 30.652344 1.132812 30.488281 C 1.046875 30.324219 1 30.164062 1 29.71875 L 1 2.28125 C 1 1.835938 1.046875 1.675781 1.132812 1.511719 C 1.222656 1.347656 1.347656 1.222656 1.511719 1.132812 C 1.675781 1.046875 1.835938 1 2.28125 1 Z M 2.28125 1 "/>
+</clipPath>
+<image id="source-7" x="0" y="0" width="14" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAeCAAAAAA59XCWAAAAAmJLR0QA/4ePzL8AAAAcSURBVBiVY9QXZEACTCg8BgYhRhQuKm8UDAYAALSXAGn7lyyUAAAAAElFTkSuQmCC"/>
+<mask id="mask-0">
+<g filter="url(#filter-remove-color)">
+<use xlink:href="#source-7" filter="url(#filter-color-to-alpha)" transform="matrix(1, 0, 0, 1, 1, 1)"/>
+</g>
+</mask>
+<image id="source-6" x="0" y="0" width="14" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAeCAIAAACT/LgdAAAABmJLR0QA/wD/AP+gvaeTAAAAEklEQVQ4jWNgGAWjYBSMgpEOAAUKAAHFIe4IAAAAAElFTkSuQmCC"/>
+<image id="source-13" x="0" y="0" width="14" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAeCAAAAAA59XCWAAAAAmJLR0QA/4ePzL8AAAAXSURBVBiVY9QTZEAGQowoXFTeKBiEAACTygBVkske9AAAAABJRU5ErkJggg=="/>
+<mask id="mask-1">
+<g filter="url(#filter-remove-color)">
+<use xlink:href="#source-13" filter="url(#filter-color-to-alpha)" transform="matrix(1, 0, 0, 1, 1, 1)"/>
+</g>
+</mask>
+<image id="source-12" x="0" y="0" width="14" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAeCAIAAACT/LgdAAAABmJLR0QA/wD/AP+gvaeTAAAAHklEQVQ4jWP8//8/A3GAiUh1o0pHlY4qHVU6xJQCAKX/Azm8V5VZAAAAAElFTkSuQmCC"/>
+<clipPath id="clip-2">
+<path clip-rule="evenodd" d="M -9 -9 L 25 -9 L 25 41 L -9 41 Z M 2.28125 1 L 15 1 L 15 31 L 2.28125 31 C 1.835938 31 1.675781 30.953125 1.511719 30.867188 C 1.347656 30.777344 1.222656 30.652344 1.132812 30.488281 C 1.046875 30.324219 1 30.164062 1 29.71875 L 1 2.28125 C 1 1.835938 1.046875 1.675781 1.132812 1.511719 C 1.222656 1.347656 1.347656 1.222656 1.511719 1.132812 C 1.675781 1.046875 1.835938 1 2.28125 1 Z M 2.28125 1 "/>
+</clipPath>
+</defs>
+<g clip-path="url(#clip-0)">
+<g clip-path="url(#clip-1)">
+<rect x="-1.6" y="-3.2" width="19.2" height="38.4" fill="rgb(17.254639%, 17.254639%, 17.254639%)" fill-opacity="1"/>
+</g>
+</g>
+<g mask="url(#mask-0)">
+<use xlink:href="#source-6" transform="matrix(1, 0, 0, 1, 1, 1)"/>
+</g>
+<g mask="url(#mask-1)">
+<use xlink:href="#source-12" transform="matrix(1, 0, 0, 1, 1, 1)"/>
+</g>
+<g clip-path="url(#clip-2)">
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="0.1464" stroke-miterlimit="10" d="M 1.28125 0 L 14 0 L 14 30 L 1.28125 30 C 0.835938 30 0.675781 29.953125 0.511719 29.867188 C 0.347656 29.777344 0.222656 29.652344 0.132812 29.488281 C 0.046875 29.324219 0 29.164062 0 28.71875 L 0 1.28125 C 0 0.835938 0.046875 0.675781 0.132812 0.511719 C 0.222656 0.347656 0.347656 0.222656 0.511719 0.132812 C 0.675781 0.046875 0.835938 0 1.28125 0 Z M 1.28125 0 " transform="matrix(1, 0, 0, 1, 1, 1)"/>
+</g>
+</svg>
