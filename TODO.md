@@ -5,11 +5,11 @@ Tick an item when it ships, and delete ticked items at the next release.
 
 ## Next release
 
-- [ ] **Release what is on `main`** — `apps create [name]`, `dev --simulator` and the simulator it serves, and the out-of-date notice. Bump the version and publish: the README and the skill already describe all of it, and 0.5.0 knows none of it.
+- [ ] **Release 0.6.0** — what is on `main`: `apps create [name]`, `wait`, `faucet`, the `apps` table with its test and live commits and without `publish`/`unpublish`, `dev --simulator` and the simulator it serves, and the out-of-date notice. `apps` selects `test` and `live` on `builderApp`, which the api's environments promote brought to production on 2026-10-02, so nothing gates the release now. Bump the version and publish: the README and the skill already describe all of it, and 0.5.0 knows none of it.
 - [ ] **The SDK release the simulator needs** — the sidebar lists an app's calls, and the app learns the phone's safe area, only from `@joinbankroll/sdk` 0.33.0 on, which is where the stand-in host starts talking to a simulator. Until that is published an app runs in the simulator with an empty list and its content under the status bar. The starter pins `^0.32.0`: move it to 0.33.0 with the release, and in the same change add `bankroll.init()` at the top of `src/lib/client/bankroll.ts`. From 0.33.0 every call but `status()` fails without it.
 - [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches a newer CLI, or its simulator, on its own. Bump it with every release.
 - [ ] **Starter: the SDK's `MockHost`** — once the SDK has it, replace `src/app/app/mock-host.tsx` with the one from `@joinbankroll/sdk/next`.
-- [ ] **Docs** — the quickstart and the starter's README can show `bankroll apps create "My App"`; local development needs a section on `dev --simulator`.
+- [ ] **Docs** — local development needs a section on `dev --simulator`.
 
 ## The simulator
 

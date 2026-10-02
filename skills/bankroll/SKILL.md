@@ -6,8 +6,9 @@ description: Build, run, and ship Bankroll apps — real-money web apps that run
 # Bankroll
 
 A Bankroll app is a web app that Bankroll hosts and opens inside its mobile
-app. You make one with the Bankroll CLI, build it in its repo, and push; the
-push is the deploy. The host supplies verified identity (one person, one
+app. You make one with the Bankroll CLI, build it in its repo, and push. A
+push to `main` builds the test version, paid in test cash; a push to `live`
+publishes it. The host supplies verified identity (one person, one
 account, with a verified age), per-session geolocation, payments in HSUSD (a
 one-dollar stablecoin on Solana), haptics, and a review card. Charges settle
 on-chain to the app's own wallet, which Bankroll runs. Settlement is final:
@@ -19,11 +20,13 @@ is mostly rules.
 ```bash
 npm i -g @joinbankroll/cli          # once per machine
 bankroll login                      # opens the browser; log in with a phone number, approve the code
-bankroll apps                       # your apps, each with its latest run's state
+bankroll apps                       # your apps, with the commit each version serves and the latest run's state
 bankroll apps create                # a new app from the starter, cloned into ./br-<id>-xxxxxx
 bankroll apps create "Its Name"     # the same, named: the name is committed in the clone, ./its-name
 bankroll apps clone <id>            # an app you already have, if its repo is not here
-bankroll apps publish <id>          # list it for everyone: from then on real players pay
+bankroll wait test                  # after `git push bankroll main`: the build, then the test address and a QR
+bankroll wait live                  # after `git push bankroll main:live`: the build, then the live address
+bankroll faucet                     # $100 of test cash for the account; a test version takes nothing else
 bankroll --help                     # discover the rest; do not recall commands from memory
 ```
 
@@ -85,17 +88,22 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
 7. Before a push: `npm run typecheck && npm run lint && npm run build`. A build
    that fails is not deployed.
 
-## Ship: the push is the deploy
+## Ship: test, then live
 
 Check `git remote -v` first.
 
 - **A remote named `bankroll`**: a laptop clone. Commit your own files with a
   plain message about the change, then `git push bankroll main`. Bankroll
   reads the code, classifies what the app does (free, paid, prizes; that
-  sets where it may take money), signs its manifest, and deploys it, in a
-  minute or two. `bankroll apps` shows the run: `pushed` while it builds,
-  then `live`, or `error`, and the owner's phone gets the reason. Players open
-  the app at `https://joinbankroll.com/play?url=<address>/app`.
+  sets where it may take money), signs its manifest, and builds the **test
+  version**, in a minute or two. `bankroll wait test` watches it and prints
+  `ready in 41 s.` with the test address and a QR, or `failed:` with the
+  reason; it exits 1 on a failure. The test version has its own address and
+  takes test cash only. Put the QR in your reply so the user tries it.
+- **Publish** when the user says the test version is right:
+  `git push bankroll main:live`, then `bankroll wait live`. That commit
+  becomes the live version, the one every Bankroll user gets, paid in real
+  money. The branch is the switch; no command publishes.
 - **A remote named `origin`**: Bankroll's own builder sandbox. Do not commit or
   push; the builder does that when the run ends, and its rules file applies.
 
@@ -142,7 +150,8 @@ an image or attachment; neither renders in a terminal chat.
 
 ## STOP — ask the user first
 
-- `bankroll apps publish`: from then on real players pay real money.
+- `git push bankroll main:live`: it publishes the test version, and from then
+  on real players pay real money.
 - Anything that writes a secret key into the project, a log, or a commit.
 - Movement of more real money than the task needs.
 
@@ -150,7 +159,8 @@ an image or attachment; neither renders in a terminal chat.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `bankroll apps` shows `error` after a push | The build failed: describe, classify, sign, or deploy | The owner's phone has the reason; fix and push again |
+| `bankroll wait test` says `failed:` | The build failed: describe, classify, sign, or deploy | It prints the reason; fix and push again |
+| `bankroll wait test` says the SDK is too old | A test build needs `@joinbankroll/sdk` 0.32.0 or later in the lockfile | `npm install @joinbankroll/sdk@latest`, commit, push again |
 | "Could not set up the app" from `apps create` | Provisioning failed on Bankroll's side | Try once more; if it repeats, tell the user |
 | "Can't open this app" on the phone | The tunnel died on restart | Restart `npm run dev`, scan the new QR |
 | `update_required` | The Bankroll app is too old | Ask the user to update the app |
@@ -161,4 +171,4 @@ an image or attachment; neither renders in a terminal chat.
 
 Run `npm run typecheck && npm run lint && npm run build && npm test`. Confirm
 the replay guard: the same signature must not grant value twice. After a push,
-confirm `bankroll apps` shows the run `live`.
+`bankroll wait test` must say `ready`.

@@ -9,7 +9,9 @@ bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
 cd free-throw-duel && npm install        # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
 npm run dev -- --simulator               # or the app in a phone on this computer, as a pretend user
-git push bankroll main                   # Bankroll builds and deploys it
+git push bankroll main                   # Bankroll builds the test version
+bankroll wait test                       # the build, then the test address and a QR; it takes test cash
+git push bankroll main:live              # publishes it: everyone gets it, paid in real money
 ```
 
 The [starter](https://github.com/inplayinnovation/bankroll-starter) carries it
@@ -23,19 +25,38 @@ way.
 bankroll login                                  log in to your Bankroll account
 bankroll logout                                 forget the login on this computer
 bankroll whoami                                 who this computer is logged in as
-bankroll apps                                   your apps, archived ones left out
-bankroll apps --published                       only the ones listed for everyone
+bankroll apps                                   your apps, with the commit each version serves
 bankroll apps --archived                        only archived; --all for everything
 bankroll apps create [name]                     a new app, cloned here; --no-clone leaves it
 bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
-bankroll apps publish <id>                      listed for everyone
-bankroll apps unpublish <id>                    unlisted; still playable by link
+
+bankroll wait test                              the build a push to main started, then the test address and a QR
+bankroll wait live                              the build a push to live started, then the live address
+bankroll faucet                                 test cash for your account
 
 bankroll dev                                    tunnel + QR, injects your key
 bankroll dev --simulator                        the app in a phone on this computer, no tunnel
 ```
+
+### Test, then live
+
+An app has two versions. `git push bankroll main` builds the **test**
+version: its own address, paid in test cash, a token worth nothing that
+Bankroll mints on request. `git push bankroll main:live` publishes that commit
+as the **live** version, the one everyone gets, paid in real money. Nothing
+else publishes; the branch is the switch.
+
+`bankroll wait test` and `bankroll wait live` watch the build a push started
+and print the result: `ready in 41 s.` with the address, or `failed:` with
+the reason. Inside a clone they find the app by its remote; elsewhere pass
+`--app <id>`. The test result ends with a QR that opens the test version in
+Bankroll on your phone. `bankroll faucet` sends your account $100 of test
+cash; the test version's menu in the app has the same button.
+
+`bankroll apps` lists the commit each version serves, whole. What is tested
+but not live is a git question: `git log bankroll/live..bankroll/main`.
 
 ### `bankroll dev`
 

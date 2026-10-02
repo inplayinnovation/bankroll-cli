@@ -22,25 +22,26 @@ import { bin, install, Tunnel } from 'cloudflared';
 
 import { openBrowser } from './browser';
 import { loadSigner } from './keypair';
-import { qrLines, qrTextLines } from './qr';
+import { playUrl, resolveEnvironment } from './environments';
+import { launchPath, MANIFEST_PATH } from './manifest';
+import { printQr } from './qr';
 import { serveSimulator } from './simulator';
 import { updateNotice } from './update';
 
 const DEV_COMMAND = 'next';
 const DEV_ARGS = ['dev'];
 const TUNNEL_TIMEOUT_MS = 20_000;
-// How long a dev server gets to answer its first request, and how often it is asked.
+// How long a dev server gets to answer its first request, how often it is
+// asked, and how long each ask waits.
 const SERVER_TIMEOUT_MS = 60_000;
 const SERVER_POLL_MS = 250;
+const SERVER_ASK_TIMEOUT_MS = 5_000;
 
 // cloudflared logs its own control-plane host while requesting the tunnel, and
 // the library matches any *.trycloudflare.com hostname — so this one arrives
 // first and has to be skipped to reach the assigned subdomain.
 const TUNNEL_API_ORIGIN = 'https://api.trycloudflare.com';
 
-const PLAY_LINK = 'https://joinbankroll.com/play?url=';
-const MANIFEST_PATH = '/.well-known/bankroll.jwt';
-const MANIFEST_TIMEOUT_MS = 5_000;
 
 // The dev server reads this; it is never written to a file.
 const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
@@ -49,6 +50,8 @@ const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
 const MOCK_ENV = 'BANKROLL_MOCK';
 
 export interface DevOptions {
+  // From `-e`: the play link opens the app in that environment's Bankroll.
+  env?: string;
   port?: string;
   keypair?: string;
   /** The app in the simulator on this computer, in place of the tunnel and the QR. */
@@ -80,33 +83,6 @@ async function freePort(): Promise<number> {
       probe.close(() => resolve(address.port));
     });
   });
-}
-
-/**
- * Where the app boots, from the manifest it is serving.
- *
- * Asked of localhost, not the tunnel: the answer is the same either way, and
- * going direct means this works on a machine that cannot resolve the tunnel's
- * hostname. By the time a tunnel has finished coming up the dev server has been
- * ready for seconds, so this is a single request with no waiting.
- *
- * Falls back to the origin. A QR pointing at the app's root still opens
- * something; refusing to print one because a manifest was slow would not.
- */
-async function launchPath(port: string): Promise<string> {
-  try {
-    const response = await fetch(`http://localhost:${port}${MANIFEST_PATH}`, {
-      signal: AbortSignal.timeout(MANIFEST_TIMEOUT_MS),
-    });
-    if (!response.ok) return '';
-    const payload = (await response.text()).trim().split('.')[1];
-    if (!payload) return '';
-    const claims: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    const launch = (claims as { launch?: unknown })?.launch;
-    return typeof launch === 'string' ? launch : '';
-  } catch {
-    return '';
-  }
 }
 
 // The tunnel is a convenience, not a prerequisite — without one the dev server
@@ -150,7 +126,7 @@ async function serverReady(port: string): Promise<boolean> {
   const deadline = Date.now() + SERVER_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      await fetch(`http://localhost:${port}${MANIFEST_PATH}`, { signal: AbortSignal.timeout(MANIFEST_TIMEOUT_MS) });
+      await fetch(`http://localhost:${port}${MANIFEST_PATH}`, { signal: AbortSignal.timeout(SERVER_ASK_TIMEOUT_MS) });
       return true;
     } catch {
       await wait(SERVER_POLL_MS);
@@ -186,7 +162,7 @@ async function simulate(port: string, child: ChildProcess, notice: Promise<strin
   }
   // This command runs in the app's folder: the simulator's sidebar says what is installed there.
   const about = { cli: version, dir: process.cwd() };
-  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(port)}`, process.env, about).catch((error: unknown) => {
+  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(`http://localhost:${port}`)}`, process.env, about).catch((error: unknown) => {
     // No simulator is a failure of the whole command: the dev server goes with it.
     child.kill();
     throw error;
@@ -267,17 +243,17 @@ export async function dev(options: DevOptions, version: string): Promise<void> {
   // /play loads exactly the URL it is given, so the launch path has to be in
   // the link — pointing at the origin opens whatever the app serves at its
   // root, which for most apps is a landing page rather than the app.
-  const target = `${origin}${await launchPath(port)}`;
-  const link = `${PLAY_LINK}${encodeURIComponent(target)}`;
+  // The manifest is asked of localhost, not the tunnel: the answer is the same
+  // either way, and going direct works on a machine that cannot resolve the
+  // tunnel's hostname. By the time a tunnel has come up the dev server has
+  // been ready for seconds, so this is a single request with no waiting.
+  const target = `${origin}${await launchPath(`http://localhost:${port}`)}`;
+  const link = `${playUrl(resolveEnvironment(options.env))}?url=${encodeURIComponent(target)}`;
 
-  // A TTY gets the colored QR. Anything else — piped or backgrounded, which is
-  // how a coding agent runs this — gets bare glyphs: the colored QR's contrast
-  // is entirely in its ANSI codes, which do not survive being re-printed into
-  // a chat. NO_COLOR (any value) forces the same on a TTY. The play link is
-  // printed in full either way, so it can be copied or re-encoded verbatim.
-  const plain = !process.stdout.isTTY || process.env.NO_COLOR !== undefined;
+  // The play link is printed in full under the QR, so it can be copied or
+  // re-encoded verbatim.
   console.log('');
-  for (const line of plain ? qrTextLines(link) : qrLines(link)) console.log('  ' + line);
+  printQr(link);
   console.log(`\n  Scan to open the app on your phone\n  ${target}\n  Play link: ${link}\n`);
   const update = await notice;
   if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);

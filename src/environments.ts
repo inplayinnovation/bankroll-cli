@@ -19,6 +19,13 @@ export const PRODUCTION: Environment = {
 };
 
 export const GRAPHQL_PATH = '/api/graphql';
+// Where a play link opens. Production's is the public site; any other api
+// serves its own /play, so a link made against it opens that environment.
+const PRODUCTION_PLAY_URL = 'https://joinbankroll.com/play';
+
+export function playUrl(environment: Environment): string {
+  return environment.name === PRODUCTION.name ? PRODUCTION_PLAY_URL : `${environment.apiUrl}/play`;
+}
 
 const CONFIG_DIR = join(homedir(), '.config', 'bankroll');
 export const ENVIRONMENTS_PATH = join(CONFIG_DIR, 'environments.json');

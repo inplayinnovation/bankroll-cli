@@ -11,10 +11,17 @@ import { SKILL_HINT } from './skill';
 
 const APPS_QUERY = `query Apps {
   builderApps {
-    id name url status archivedAt publishedAt createdAt
+    id name url status archivedAt createdAt
     latestRun { status startedAt error }
+    test { commit }
+    live { commit }
   }
 }`;
+
+/** One of the app's two versions: the commit its address serves, or none yet. */
+export interface VersionRow {
+  commit: string | null;
+}
 
 export interface AppRow {
   id: string;
@@ -23,9 +30,10 @@ export interface AppRow {
   url: string;
   status: string;
   archivedAt: string | null;
-  publishedAt: string | null;
   createdAt: string;
   latestRun: { status: string; startedAt: string; error: string | null } | null;
+  test: VersionRow;
+  live: VersionRow;
 }
 
 interface AppsData {
@@ -33,19 +41,19 @@ interface AppsData {
 }
 
 // What a mutation answers with: enough to say the app's new state.
-const APP_FIELDS = 'id name url status archivedAt publishedAt';
+const APP_FIELDS = 'id name url status archivedAt';
 
 const ARCHIVE_MUTATION = `mutation Archive($id: ID!) { builderArchiveApp(id: $id) { ${APP_FIELDS} } }`;
 const UNARCHIVE_MUTATION = `mutation Unarchive($id: ID!) { builderUnarchiveApp(id: $id) { ${APP_FIELDS} } }`;
-const SET_PUBLISHED_MUTATION = `mutation SetPublished($id: ID!, $published: Boolean!) {
-  builderSetPublished(id: $id, published: $published) { ${APP_FIELDS} }
-}`;
 
-export type AppState = Pick<AppRow, 'id' | 'name' | 'url' | 'status' | 'archivedAt' | 'publishedAt'>;
+export type AppState = Pick<AppRow, 'id' | 'name' | 'url' | 'status' | 'archivedAt'>;
 
 const CREATE_MUTATION = `mutation CreateApp { builderCreateApp { ${APP_FIELDS} } }`;
 
-const COLUMNS = ['ID', 'NAME', 'STATUS', 'PUBLISHED', 'LAST RUN', 'CREATED', 'URL'] as const;
+// TEST and LIVE are the commits each version serves, whole: a hash that is cut
+// cannot be used anywhere else.
+const COLUMNS = ['ID', 'NAME', 'STATUS', 'TEST', 'LIVE', 'LAST RUN', 'CREATED', 'URL'] as const;
+const NONE = '-';
 const GAP = '  ';
 const NO_APPS = 'No apps yet. Build one in the Bankroll app.';
 const RUN_FAILED = 'error';
@@ -69,8 +77,9 @@ export function formatApps(apps: AppRow[]): string {
     app.id,
     nameOf(app),
     app.archivedAt ? 'archived' : app.status,
-    app.publishedAt ? 'yes' : 'no',
-    app.latestRun ? `${app.latestRun.status} ${day(app.latestRun.startedAt)}` : '-',
+    app.test.commit ?? NONE,
+    app.live.commit ?? NONE,
+    app.latestRun ? `${app.latestRun.status} ${day(app.latestRun.startedAt)}` : NONE,
     day(app.createdAt),
     app.url,
   ]);
@@ -90,31 +99,20 @@ export interface ListOptions {
   // Archived apps: hidden by default, only them with --archived, everything with --all.
   all?: boolean;
   archived?: boolean;
-  published?: boolean;
-  unpublished?: boolean;
 }
 
 /** The apps a listing shows, and how many archived ones it left out. */
 export function filterApps(apps: AppRow[], options: ListOptions): { shown: AppRow[]; archivedHidden: number } {
-  if (options.published && options.unpublished) {
-    throw new Error('--published and --unpublished cannot both be given');
-  }
-  const byPublication = apps.filter((app) => {
-    if (options.published) return app.publishedAt !== null;
-    if (options.unpublished) return app.publishedAt === null;
-    return true;
-  });
-  if (options.all) return { shown: byPublication, archivedHidden: 0 };
-  const archived = byPublication.filter((app) => app.archivedAt !== null);
+  if (options.all) return { shown: apps, archivedHidden: 0 };
+  const archived = apps.filter((app) => app.archivedAt !== null);
   if (options.archived) return { shown: archived, archivedHidden: 0 };
-  return { shown: byPublication.filter((app) => app.archivedAt === null), archivedHidden: archived.length };
+  return { shown: apps.filter((app) => app.archivedAt === null), archivedHidden: archived.length };
 }
 
-/** "Stackline (53): live, published, https://…" */
+/** "Stackline (53): live, https://…" */
 export function describeApp(app: AppState): string {
   const state = app.archivedAt ? 'archived' : app.status;
-  const published = app.publishedAt ? 'published' : 'not published';
-  return `${nameOf(app)} (${app.id}): ${state}, ${published}, ${app.url}`;
+  return `${nameOf(app)} (${app.id}): ${state}, ${app.url}`;
 }
 
 const locationFor = (options: AccountOptions) => sessionLocation(resolveEnvironment(options.env));
@@ -173,7 +171,7 @@ export async function create(given: string | undefined, options: AccountOptions 
   console.log(`\n  ${describeApp(name === undefined ? app : { ...app, name })}`);
   if (name === undefined) console.log(`  ${NAME_HINT}`);
   if (options.noClone) {
-    console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds and deploys it.`);
+    console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds its test version.`);
     console.log(`  ${SKILL_HINT}\n`);
     return;
   }
@@ -195,12 +193,4 @@ export async function archive(id: string, options: AccountOptions): Promise<void
 export async function unarchive(id: string, options: AccountOptions): Promise<void> {
   const data = await graphql<{ builderUnarchiveApp: AppState }>(locationFor(options), UNARCHIVE_MUTATION, { id });
   console.log(`\n  ${describeApp(data.builderUnarchiveApp)}\n`);
-}
-
-export async function setPublished(id: string, published: boolean, options: AccountOptions): Promise<void> {
-  const data = await graphql<{ builderSetPublished: AppState }>(locationFor(options), SET_PUBLISHED_MUTATION, {
-    id,
-    published,
-  });
-  console.log(`\n  ${describeApp(data.builderSetPublished)}\n`);
 }

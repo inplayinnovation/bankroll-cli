@@ -4,15 +4,17 @@
 // machine, and it never leaves it. `login` is separate: it keeps a Bankroll
 // account session on this machine for the commands that act on your account
 // and your apps.
-import { Command } from 'commander';
+import { Argument, Command } from 'commander';
 
 // Replaced at build time with this package's version — see tsup.config.ts.
 declare const __VERSION__: string;
 
 import * as apps from './apps';
+import { faucet } from './faucet';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import { login, logout, whoami } from './login';
 import * as repo from './repo';
+import { TARGETS, wait } from './wait';
 
 // `dev` loads the tunnel library, which is slow to start. It is imported
 // when it runs, so the account commands and the git credential helper never
@@ -42,7 +44,7 @@ program
   .option('--no-open', "with --simulator, print its link and leave the browser alone")
   .action(async (options) => {
     const { dev } = await lazy.dev();
-    await dev(options, __VERSION__);
+    await dev({ ...program.opts(), ...options }, __VERSION__);
   });
 
 program
@@ -67,13 +69,30 @@ program
     await whoami(program.opts());
   });
 
+// Git is the interface to an app's versions: `git push bankroll main` builds
+// the test version, `git push bankroll main:live` publishes it. These two
+// observe and supply; neither wraps a git command.
+program
+  .command('wait')
+  .addArgument(new Argument('<version>', 'which version to wait for').choices([...TARGETS]))
+  .option('--app <id>', 'the app, by its id from the list (default: the clone this runs in)')
+  .description("Watch the build a push started, then print where that version is")
+  .action(async (version, options) => {
+    await wait(version, { ...program.opts(), ...options });
+  });
+
+program
+  .command('faucet')
+  .description('Send yourself test cash: what a test version takes instead of real money')
+  .action(async () => {
+    await faucet(program.opts());
+  });
+
 const builtApps = program.command('apps').description('The apps you built with Bankroll');
 
 builtApps
   .command('list', { isDefault: true })
   .description('List your apps, newest first; archived ones are left out')
-  .option('--published', 'only apps listed for everyone')
-  .option('--unpublished', 'only apps not listed')
   .option('--archived', 'only archived apps')
   .option('--all', 'archived apps too')
   .action(async (options) => {
@@ -112,22 +131,6 @@ builtApps
   .description('Put an archived app back on the air, same version')
   .action(async (id) => {
     await apps.unarchive(id, program.opts());
-  });
-
-builtApps
-  .command('publish')
-  .argument('<id>', 'the app, by its id from the list')
-  .description('List the app in Bankroll for everyone')
-  .action(async (id) => {
-    await apps.setPublished(id, true, program.opts());
-  });
-
-builtApps
-  .command('unpublish')
-  .argument('<id>', 'the app, by its id from the list')
-  .description('Take the app out of the listing; it stays playable by link')
-  .action(async (id) => {
-    await apps.setPublished(id, false, program.opts());
   });
 
 // Git runs this one; a person never types it. See src/repo.ts.

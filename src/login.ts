@@ -13,9 +13,9 @@ const MS_PER_SECOND = 1000;
 const FILE_FLAG = '--allow-file-session';
 const YES = new Set(['y', 'yes']);
 
-const WHOAMI_QUERY = `query Whoami { session { user { username walletAddress } } }`;
+export const WHOAMI_QUERY = `query Whoami { session { user { username walletAddress } } }`;
 
-interface WhoamiData {
+export interface WhoamiData {
   session: { user: { username: string | null; walletAddress: string | null } | null };
 }
 

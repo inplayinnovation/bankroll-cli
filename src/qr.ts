@@ -20,6 +20,17 @@ const WHITE = 231;
 const HALF_BLOCK = '▀';
 const RESET = '[0m';
 
+/**
+ * The QR for a link, on stdout. A TTY gets the colored QR. Anything else —
+ * piped or backgrounded, which is how a coding agent runs this — gets bare
+ * glyphs: the colored QR's contrast is entirely in its ANSI codes, which do
+ * not survive being re-printed into a chat. NO_COLOR forces the same on a TTY.
+ */
+export function printQr(link: string): void {
+  const plain = !process.stdout.isTTY || process.env.NO_COLOR !== undefined;
+  for (const line of plain ? qrTextLines(link) : qrLines(link)) console.log('  ' + line);
+}
+
 export function qrLines(text: string): string[] {
   const qr = qrcode(QR_TYPE_AUTO, QR_ERROR_CORRECTION);
   qr.addData(text);
