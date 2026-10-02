@@ -27,9 +27,10 @@ and the CLI serves it from there (`src/simulator.ts`).
   again whenever the simulator's own controls are done with it. A game is
   played from the keyboard with no click on the phone first. A controller needs
   nothing from here: the frame allows the browser's Gamepad API.
-- **Turning the phone** is the simulator's own doing. The Bankroll app is
-  portrait only on a phone, so the menu sets landscape apart and a line under
-  the turned phone says so (`shownOnPhones` in `lib/devices`).
+- **Landscape** is in the Orientation menu, greyed out as not yet available.
+  The Bankroll app is portrait only on a phone, so the simulator shows an app
+  no other way (`ORIENTATIONS` in `lib/devices`). The phone here can turn; the
+  menu is what keeps it upright.
 - **Settings** (device, orientation, theme) and the apps added by hand are kept
   in the browser's localStorage.
 

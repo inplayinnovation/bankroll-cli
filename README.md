@@ -77,9 +77,8 @@ stays empty.
 
 The keyboard is the app's: a game that takes keys is played from the keyboard,
 with no click on the phone first. A phone has no keyboard, so that is for
-working on the app, not something a player has. The phone in the simulator
-turns, and a phone running Bankroll does not: there an app is only ever shown
-in portrait.
+working on the app, not something a player has. The phone stays upright, as a
+phone running Bankroll does: an app there is only ever shown in portrait.
 
 The page is served from this computer alone, at `http://localhost:4100`, or the
 next free port. `--no-open` prints the link and leaves the browser alone.

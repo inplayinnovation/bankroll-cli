@@ -160,6 +160,12 @@ body {
     outline: none;
   }
 
+  /* Listed, and not to be chosen: greyed out, and never lit under the pointer. */
+  .menu-select option:disabled {
+    color: color-mix(in srgb, var(--foreground) 30%, transparent);
+    background: transparent;
+  }
+
   /* Keep the checkmark's column on unchecked rows so the names line up. */
   .menu-select option::checkmark {
     content: "\2713";
@@ -179,6 +185,31 @@ body {
 .bankroll-logo-mark {
   fill: #97f04a;
   fill: color(display-p3 0.5922 0.9412 0.2902);
+}
+
+/* --- Footer: the logo, what Bankroll is, and a lock ----------------------- */
+
+.footer-tagline {
+  margin-top: 7px;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* A lock and a word, the way a browser marks a site it reaches over a secure
+   line. The logo's green on the dark desk. On the light one that green cannot
+   be read, and a darker green of the same hue takes its place. */
+.footer-secure {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: light-dark(#357409, #97f04a);
+  color: light-dark(#357409, color(display-p3 0.5922 0.9412 0.2902));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
 }
 
 /* --- Stage: scale the device to fit -------------------------------------- */
@@ -272,22 +303,6 @@ body {
 
 .control-button:active {
   background: color-mix(in srgb, var(--foreground) 24%, transparent);
-}
-
-/* A line under the controls, for what the simulator shows and a phone would
-   not. Closer to the controls than the stage's gap puts it. */
-.stage-note {
-  flex: none;
-  margin-top: -8px;
-  color: color-mix(in srgb, var(--foreground) 55%, transparent);
-  font-size: 12px;
-  line-height: 16px;
-  text-align: center;
-}
-
-/* The device makes room for that line. */
-.stage-fit:has(.stage-note) {
-  --stage-controls: 76px;
 }
 
 /* --- Device --------------------------------------------------------------- */

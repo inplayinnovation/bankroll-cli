@@ -4,21 +4,18 @@ import { METRICS, type DeviceMetrics } from "./metrics";
 export { DEVICES };
 export type { BezelSpec, ButtonSpec, DeviceSpec, Orientation } from "./generated";
 
-export const ORIENTATIONS: readonly { id: Orientation; label: string }[] = [
-  { id: "portrait", label: "Portrait" },
-  { id: "landscape-left", label: "Landscape Left" },
-  { id: "landscape-right", label: "Landscape Right" },
+// Landscape is listed and not yet available. The Bankroll app is locked
+// upright on a phone, so an app there is only ever seen in portrait, and the
+// simulator shows it no other way. The phone here can turn (frameGeometry
+// below): the menu and parseOrientation are what keep it upright.
+export const ORIENTATIONS: readonly { id: Orientation; label: string; available: boolean }[] = [
+  { id: "portrait", label: "Portrait", available: true },
+  { id: "landscape-left", label: "Landscape Left", available: false },
+  { id: "landscape-right", label: "Landscape Right", available: false },
 ];
 
 export const DEFAULT_DEVICE_ID = "iphone-18-pro";
 export const DEFAULT_ORIENTATION: Orientation = "portrait";
-
-/**
- * Whether a phone ever shows an app this way up. The Bankroll app is locked
- * upright on a phone, so an app there is only ever seen in portrait. The
- * simulator turns all the same, to try a layout out, and says so where it does.
- */
-export const shownOnPhones = (orientation: Orientation) => orientation === "portrait";
 
 /** Falls back to the default device for unknown or missing ids. */
 export function getDevice(id: string | undefined): DeviceSpec {
@@ -27,8 +24,9 @@ export function getDevice(id: string | undefined): DeviceSpec {
   return device;
 }
 
+/** Falls back to upright for anything unknown, and for a way up that is not available: one saved before it was greyed out. */
 export function parseOrientation(value: string | undefined): Orientation {
-  return ORIENTATIONS.find((orientation) => orientation.id === value)?.id ?? DEFAULT_ORIENTATION;
+  return ORIENTATIONS.find((orientation) => orientation.available && orientation.id === value)?.id ?? DEFAULT_ORIENTATION;
 }
 
 export function getMetrics(device: DeviceSpec): DeviceMetrics {

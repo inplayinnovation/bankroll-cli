@@ -1,16 +1,17 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { DEVICES, ORIENTATIONS, shownOnPhones, type DeviceSpec, type Orientation } from "@/lib/devices";
+import { DEVICES, ORIENTATIONS, type DeviceSpec, type Orientation } from "@/lib/devices";
 import { saveTheme } from "@/lib/settings";
 import { useShell } from "./device-provider";
 
 // Devices arrive in menu order, newest generation first.
 const FAMILIES = [...Map.groupBy(DEVICES, (device: DeviceSpec) => device.family)];
 
-// The ways up a phone shows an app, and under a heading of their own the ones only the simulator does.
-const ON_PHONES = ORIENTATIONS.filter(({ id }) => shownOnPhones(id));
-const SIMULATOR_ONLY = ORIENTATIONS.filter(({ id }) => !shownOnPhones(id));
+// The ways up that can be chosen, and under a heading of their own the ones
+// that cannot yet: listed and greyed out (see ORIENTATIONS).
+const AVAILABLE = ORIENTATIONS.filter(({ available }) => available);
+const NOT_YET = ORIENTATIONS.filter(({ available }) => !available);
 
 // Flips between light and dark. Landing back on what the system uses drops the
 // override, so the page goes back to following the system setting.
@@ -59,14 +60,14 @@ export function TopBar() {
         value={orientation}
         onChange={change((value) => setOrientation(value as Orientation))}
       >
-        {ON_PHONES.map(({ id, label }) => (
+        {AVAILABLE.map(({ id, label }) => (
           <option key={id} value={id}>
             {label}
           </option>
         ))}
-        <optgroup label="Not in the Bankroll app">
-          {SIMULATOR_ONLY.map(({ id, label }) => (
-            <option key={id} value={id}>
+        <optgroup label="Not yet available">
+          {NOT_YET.map(({ id, label }) => (
+            <option key={id} value={id} disabled>
               {label}
             </option>
           ))}
