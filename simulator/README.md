@@ -21,6 +21,15 @@ and the CLI serves it from there (`src/simulator.ts`).
   which is the CLI: `/api/manifest?url=` reads an app's manifest, which the
   page cannot fetch across origins, and `/api/apps` names the app the CLI is
   running.
+- **The safe area** reaches the app the same way, in the other direction. The
+  app's frame fills the display, as Bankroll's web view does, and the status
+  bar and the home indicator are drawn over it. A browser on a computer reports
+  every `env(safe-area-inset-*)` as zero, and nothing outside a page can set
+  them, so hello carries the insets of the phone on screen
+  (`lib/devices/metrics.ts`) and the stand-in host sets them on the page as
+  `--bankroll-safe-area-inset-*`, for the app's CSS to prefer to the phone's
+  own. Changing the phone says hello again. Bankroll's own bar under the app is
+  not drawn: an app is that much taller here than on a phone.
 - **The keyboard** is the app's while one is open (`lib/app-keyboard.ts`). A
   key goes to whichever document has focus, and nothing can forward one into
   another origin's page, so the frame is given focus: when the app opens, and

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { Insets } from "./devices";
 
 // What an app asks of its host, as the simulator hears it.
 //
@@ -11,9 +12,17 @@ import { useSyncExternalStore } from "react";
 // SDK's (`SimulatorMessage` in @joinbankroll/sdk/mock):
 //
 //   app -> here   ready    a stand-in host is on the page
-//   here -> app   hello    tell me, and whatever I missed
+//   here -> app   hello    tell me, and whatever I missed; with it, the phone's safe area
 //   app -> here   call     a call began
 //   app -> here   result   the same call ended
+//
+// The safe area goes the other way, and for the same reason. On a phone a page
+// reads how far the status bar and the home indicator reach into the screen
+// from env(safe-area-inset-*). In a browser on a computer those are zero, and
+// nothing outside the page can set them. So hello carries the safe area of the
+// phone drawn around the app, and the app's stand-in host puts it on the page
+// as CSS variables (--bankroll-safe-area-inset-top and the rest), which the
+// app's CSS prefers to the phone's own.
 
 const CHANNEL = "simulator";
 
@@ -60,6 +69,9 @@ const emptyLog = (): HostLog => ({
 
 let log = emptyLog();
 let frame: HTMLIFrameElement | null = null;
+// The safe area of the phone on screen, as last said: every hello carries it.
+let safeArea: Insets | undefined;
+const hello = () => ({ bankroll: CHANNEL, type: "hello", safeArea });
 // An app's page numbers its calls from 1, and starts again when it reloads.
 // The run tells one page load's calls from the next's.
 let run = 0;
@@ -89,7 +101,7 @@ function hear(event: MessageEvent) {
   if (!isRecord(message) || message.bankroll !== CHANNEL) return;
 
   if (message.type === "ready") {
-    frame.contentWindow?.postMessage({ bankroll: CHANNEL, type: "hello" }, event.origin);
+    frame.contentWindow?.postMessage(hello(), event.origin);
     if (!log.connected) publish({ ...log, connected: true });
     return;
   }
@@ -157,9 +169,14 @@ export function useCallSection(method: string): CallSection {
   );
 }
 
-/** Says hello to the app in the frame. Its host answers with everything since its page loaded. */
-export function greet(origin: string) {
-  frame?.contentWindow?.postMessage({ bankroll: CHANNEL, type: "hello" }, origin);
+/**
+ * Says hello to the app in the frame, and with it the safe area of the phone
+ * around it. Its host answers with everything since its page loaded. Said
+ * again when the phone changes, the new safe area replaces the old.
+ */
+export function greet(origin: string, phone: Insets) {
+  safeArea = phone;
+  frame?.contentWindow?.postMessage(hello(), origin);
 }
 
 /** A new app is on the screen: its frame is the one listened to, and the log starts over. */

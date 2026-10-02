@@ -75,6 +75,17 @@ the money are real. The simulator shows the app's calls from
 `@joinbankroll/sdk` 0.33.0 on; on an older SDK the app still runs and the list
 stays empty.
 
+The app fills the phone's screen, as it does in Bankroll, and the status bar and
+the home indicator are drawn over it. A phone tells a page how much room those
+take through `env(safe-area-inset-*)`; a browser on a computer says zero. So
+the simulator tells the stand-in host, which sets
+`--bankroll-safe-area-inset-top`, `-right`, `-bottom` and `-left` on the page
+(`@joinbankroll/sdk` 0.33.0 on). An app whose CSS reads
+`var(--bankroll-safe-area-inset-top, env(safe-area-inset-top))`, as the
+starter's shell does, keeps clear of both here as it does on a phone. One
+difference stays: Bankroll draws a bar of its own under an app, and the
+simulator does not, so an app has a little more height here than on a phone.
+
 The keyboard is the app's: a game that takes keys is played from the keyboard,
 with no click on the phone first. A phone has no keyboard, so that is for
 working on the app, not something a player has. The phone stays upright, as a
