@@ -17,10 +17,13 @@ Tick an item when it ships, and delete ticked items at the next release.
 - [ ] **Real sessions** — a switch from the pretend user to a real Bankroll session, with the login this CLI already holds. Until then the home screen has nothing to gain from listing the account's deployed apps: outside Bankroll they only say to open them in Bankroll.
 - [ ] **The out-of-date notice, in the page** — `dev` says it in the terminal, where the simulator's user is not looking.
 - [ ] **Apps that are not Bankroll apps** — they load, and get an empty sidebar. Nothing more is decided.
-- [ ] **Check Safari and Firefox** — it has only been used in Chrome.
+- [ ] **Check Safari and Firefox** — it has only been used in Chrome. The keyboard going to the app (`simulator/lib/app-keyboard.ts`) is the part most likely to differ: it rests on how a browser moves focus into a frame.
+- [ ] **A game controller** — the frame allows the browser's Gamepad API and nothing else should be needed, but none has been plugged in to see. The same goes for a controller paired with a phone, inside Bankroll.
+- [ ] **Pull to refresh and swipe back** — the Bankroll app's web view has both, and the simulator has neither, so an app's own drag or swipe never meets them here. Skipped for now.
 - [ ] **iPhone 18 Pro's Dynamic Island** — its size in `simulator/lib/devices/metrics.ts` is provisional.
 
 ## Proposed, not decided
 
+- [ ] **A finger, not a mouse** — the simulator's pointer is a mouse, so an app that listens for touch events alone gets nothing here. An app that uses pointer events works in both, which may be all the answer needed: say so in the docs, or have the simulator send touches.
 - [ ] **The credential helper and the PATH** — a clone's git helper runs `bankroll` from the PATH. Where that is missing (another Node version under nvm) or is another program, fetch and push fail with nothing pointing at the cause. Check at clone time, or make the helper not depend on the PATH.
 - [ ] **`create-bankroll-app`** — the docs no longer point at `npm create @joinbankroll/app`. Fold what is left of it into the CLI, or retire it.
