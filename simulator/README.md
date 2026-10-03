@@ -98,8 +98,8 @@ npm run dev          # http://localhost:4100, hot reloading
 `npm run dev` serves the page only. The `/api` paths are handed to the
 CLI's server at `http://localhost:4101` (`BANKROLL_SIMULATOR_API` changes
 that), so run it alongside the CLI. `npm run dogfood -- <app directory>` in the
-repo root starts both, with an app and, when surfpool is installed, the local
-chain.
+repo root starts both, with an app and the local chain (the pinned surfpool,
+fetched once if it is not here).
 
 ## The device art
 

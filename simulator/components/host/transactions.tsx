@@ -40,6 +40,8 @@ const clock = (at: number) => {
 /** The line's words for a transaction that is not a transfer of the dollar. */
 function describe(entry: ChainTransaction, names: Record<string, string>): string {
   switch (entry.kind) {
+    case "mint":
+      return `minted → ${nameOf(names, entry.to)}`;
     case "fees":
       return `SOL for fees → ${nameOf(names, entry.accounts[1])}`;
     case "account":
@@ -52,8 +54,9 @@ function describe(entry: ChainTransaction, names: Record<string, string>): strin
 const TransactionRow = memo(function TransactionRow({ entry, names }: { entry: ChainTransaction; names: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   const transfer = entry.kind === "transfer";
+  const money = transfer || entry.kind === "mint";
   return (
-    <li className="transaction" data-failed={!entry.ok || undefined} data-quiet={!transfer || undefined}>
+    <li className="transaction" data-failed={!entry.ok || undefined} data-quiet={!money || undefined}>
       <button type="button" className="transaction-line" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <svg className="call-chevron" width="8" height="10" viewBox="0 0 8 10" aria-hidden>
           <path d="M1.5 1l5 4-5 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

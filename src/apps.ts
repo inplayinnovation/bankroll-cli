@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { graphql } from './api';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
+import { cachedSurfpool, fetchProgress, fetchSurfpool } from './host/surfpool';
 import { cloneRepo, declareName, DECLARATION_FILE, directoryFor, installDependencies } from './repo';
 import { sessionLocation } from './session';
 import { SKILL_HINT } from './skill';
@@ -196,7 +197,23 @@ export async function create(given: string | undefined, options: AccountOptions 
     console.log(`  cd ${clone.name} && npm install && npm run dev\n`);
     return;
   }
+  await fetchChain();
   console.log(`\n  Ready. \`cd ${clone.name} && npm run dev\` opens it in the simulator.\n`);
+}
+
+/**
+ * The local chain's node, fetched now so the first `dev` starts at once. Once
+ * per computer; a fetch that fails is said and left to `dev`, which fetches
+ * it when it finds none.
+ */
+async function fetchChain(): Promise<void> {
+  if (cachedSurfpool()) return;
+  try {
+    const progress = fetchProgress((line) => console.log(`  ${line}`));
+    await fetchSurfpool(progress ? { progress } : {});
+  } catch (error) {
+    console.log(`\n  The local chain's node could not be fetched (${reason(error)}); \`npm run dev\` tries again.`);
+  }
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {

@@ -23,9 +23,10 @@ import { delimiter, join } from 'node:path';
 import { bin, install, Tunnel } from 'cloudflared';
 
 import { openBrowser } from './browser';
-import { CHAIN_PORT, type Chain, findSurfpool, freeChainPort, Ledger, startChain } from './host/chain';
+import { CHAIN_PORT, type Chain, freeChainPort, Ledger, startChain } from './host/chain';
 import { Host } from './host/host';
 import { People } from './host/people';
+import { locateSurfpool, SURFPOOL_INSTALL } from './host/surfpool';
 import { loadTreasury } from './host/treasury';
 import { loadSigner } from './keypair';
 import { playUrl, resolveEnvironment } from './environments';
@@ -55,7 +56,6 @@ const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
 const MOCK_ENV = 'BANKROLL_MOCK';
 // Where the app's server reads payments from: the local chain, in the simulator.
 const RPC_ENV = 'SOLANA_RPC_URL';
-const SURFPOOL_INSTALL = 'curl -sL https://run.surfpool.run/ | bash';
 
 export interface DevOptions {
   // From `-e`: the play link opens the app in that environment's Bankroll.
@@ -156,15 +156,16 @@ interface Simulated {
 
 async function prepareSimulation(): Promise<Simulated> {
   const treasury = loadTreasury();
-  const surfpool = findSurfpool();
+  // The pinned node, fetched once per computer if it is not here yet.
+  const surfpool = await locateSurfpool({ log: (line) => console.log(`  ${line}`) });
   if (!surfpool) {
-    const problem = `surfpool is not installed, so there is no local chain to pay on. Install it with \`${SURFPOOL_INSTALL}\` and start again.`;
+    const problem = `There is no local chain to pay on: the node could not be fetched, and none is installed. Check your connection and start again, or install it with \`${SURFPOOL_INSTALL}\`.`;
     return { treasury, rpc: null, chain: Promise.resolve(null), problem };
   }
   // The port is chosen now so the app's server can be told where the chain
   // will be before the chain is up: it only asks once a payment is confirmed.
   const port = await freeChainPort(CHAIN_PORT);
-  const chain = startChain({ surfpool, port }).catch((error: unknown) => {
+  const chain = startChain({ surfpool: surfpool.path, port }).catch((error: unknown) => {
     console.warn(`\n  The local chain did not start: ${error instanceof Error ? error.message : String(error)}\n`);
     return null;
   });

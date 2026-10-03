@@ -1,12 +1,14 @@
 // The local chain: surfpool on this computer, started fresh for one run of the
 // simulator and stopped with it.
 //
-// surfpool is a Solana network of one node that stands in for mainnet: an
-// account it does not have, it fetches from mainnet the first time something
-// asks, so the Bankroll dollar exists here at its real address with no setup.
-// And it takes orders no real node would: a wallet's balance can simply be
-// set. That is how a pretend person comes to hold fake dollars, and all that
-// "fake" means: the dollar is the real token, on a chain that is ours alone.
+// surfpool is a Solana network of one node. It runs offline here: nothing is
+// fetched from mainnet, so no public RPC can slow it or refuse it, and the
+// chain's record holds this computer's transactions and nothing else. The
+// Bankroll dollar is created at its real address when the chain starts, with
+// the simulator's bank as the authority that may mint it; the bank then mints
+// what it hands out, and every dollar that moves after that is a transfer.
+// The one thing no real chain allows is that first step, the mint's account
+// written outright by surfpool's own call.
 //
 // Nothing here is valid anywhere else. A payment made on this chain is not on
 // mainnet, and a key made for it holds nothing there.
@@ -17,9 +19,12 @@ import { delimiter, join } from 'node:path';
 
 import {
   createAssociatedTokenAccountIdempotentInstruction,
+  createMintToInstruction,
   createTransferCheckedInstruction,
   getAccount,
   getAssociatedTokenAddressSync,
+  MintLayout,
+  TOKEN_PROGRAM_ID,
   TokenAccountNotFoundError,
   TokenInvalidAccountOwnerError,
 } from '@solana/spl-token';
@@ -128,7 +133,7 @@ export async function startChain(options: StartOptions = {}): Promise<Chain> {
   // is the simulator's own folder, not the app's, which it would otherwise
   // leave a stray folder in.
   mkdirSync(SIMULATOR_DIR, { recursive: true });
-  const child: ChildProcess = spawn(program, ['start', '--no-tui', '--no-studio', '--no-deploy', '-y', '-p', String(port), '-w', String(port + 1)], {
+  const child: ChildProcess = spawn(program, ['start', '--offline', '--no-tui', '--no-studio', '--no-deploy', '-y', '-p', String(port), '-w', String(port + 1)], {
     cwd: SIMULATOR_DIR,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -166,7 +171,7 @@ export async function startChain(options: StartOptions = {}): Promise<Chain> {
   throw new Error(`surfpool did not answer on port ${port} within ${START_TIMEOUT_MS / 1000} seconds.`);
 }
 
-/** Where the fake dollars come from: the simulator's bank, set once by the chain's cheat call and transferring from then on. */
+/** What the bank mints for itself when the chain starts, and again whenever it runs low. */
 export const BANK_CENTS = 1_000_000_000_00;
 // A transaction has room for about this many recipients, each an account
 // creation and a transfer.
@@ -179,10 +184,9 @@ export interface Recipient {
 
 /**
  * The chain as this host uses it. Money starts in one place, the bank, which
- * the chain's cheat call fills once when the chain is fresh; everything after
- * that is a transfer, so every dollar that moves is a transaction the list
- * can show, as it is on a phone. The sponsor pays the network fee of each
- * payment, as Bankroll does.
+ * mints it; everything after that is a transfer, so every dollar that moves is
+ * a transaction the list can show, as it is on a phone. The sponsor pays the
+ * network fee of each payment, as Bankroll does.
  */
 export class Ledger {
   readonly connection: Connection;
@@ -196,13 +200,11 @@ export class Ledger {
     this.connection = new Connection(rpc, 'confirmed');
   }
 
-  /** Gives the sponsor and the bank what they need, and makes sure the dollar is here. */
+  /** Gives the sponsor and the bank SOL for fees, creates the dollar, and mints the bank's float. */
   async prepare(): Promise<void> {
     await Promise.all([this.airdrop(this.sponsor.publicKey), this.airdrop(this.bank.publicKey)]);
-    // Asking for the mint is what brings it over from mainnet.
-    const mint = await this.connection.getAccountInfo(this.mint);
-    if (!mint) throw new Error(`the local chain has no account for the dollar (${DOLLAR_MINT}): is this computer online?`);
-    await this.fillBank();
+    await this.createDollar();
+    await this.mintToBank(BANK_CENTS);
   }
 
   /** Enough SOL for a run of fees. */
@@ -212,13 +214,29 @@ export class Ledger {
   }
 
   /**
-   * The one thing no real chain allows: the bank's balance, set outright. A
-   * JSON number carries it, and the bank's figure is one a double holds
-   * exactly; it is refilled when it runs low rather than set higher.
+   * The dollar's mint, at its real address, with the bank as the authority
+   * that may mint it: written outright by surfpool's own call, since an
+   * offline chain has never heard of it. Once, when the chain is fresh.
    */
-  private async fillBank(): Promise<void> {
-    const amount = BigInt(BANK_CENTS) * BASE_UNITS_PER_CENT;
-    await rpc(this.rpc, 'surfnet_setTokenAccount', [this.bank.publicKey.toBase58(), DOLLAR_MINT, { amount: Number(amount) }]);
+  private async createDollar(): Promise<void> {
+    if (await this.connection.getAccountInfo(this.mint)) return;
+    const data = Buffer.alloc(MintLayout.span);
+    MintLayout.encode(
+      { mintAuthorityOption: 1, mintAuthority: this.bank.publicKey, supply: 0n, decimals: DOLLAR_DECIMALS, isInitialized: true, freezeAuthorityOption: 0, freezeAuthority: PublicKey.default },
+      data,
+    );
+    const lamports = await this.connection.getMinimumBalanceForRentExemption(MintLayout.span);
+    await rpc(this.rpc, 'surfnet_setAccount', [DOLLAR_MINT, { lamports, data: data.toString('hex'), owner: TOKEN_PROGRAM_ID.toBase58(), executable: false }]);
+  }
+
+  /** New dollars, minted to the bank: a transaction, like everything after it. */
+  private async mintToBank(cents: number): Promise<string> {
+    const account = getAssociatedTokenAddressSync(this.mint, this.bank.publicKey);
+    const transaction = new Transaction().add(
+      createAssociatedTokenAccountIdempotentInstruction(this.bank.publicKey, account, this.bank.publicKey, this.mint),
+      createMintToInstruction(this.mint, account, this.bank.publicKey, BigInt(cents) * BASE_UNITS_PER_CENT),
+    );
+    return this.send(transaction, [this.bank], this.bank.publicKey);
   }
 
   /** What a wallet holds, in whole cents; a wallet with no dollar account holds none. */
@@ -302,8 +320,9 @@ export class Ledger {
     ];
   }
 
+  // The bank mints more when it would otherwise run short.
   private async coverFromBank(cents: number): Promise<void> {
-    if ((await this.dollarsOf(this.bank.publicKey.toBase58())) < cents) await this.fillBank();
+    if ((await this.dollarsOf(this.bank.publicKey.toBase58())) < cents) await this.mintToBank(BANK_CENTS);
   }
 
   private async send(transaction: Transaction, signers: Keypair[], feePayer: PublicKey): Promise<string> {

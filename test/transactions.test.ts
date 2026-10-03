@@ -117,6 +117,15 @@ suite('describe', () => {
     expect(describe(4, 'sig', account, DOLLAR_MINT, BASE_UNITS_PER_CENT).kind).toBe('account');
   });
 
+  it('reads new dollars minted to a wallet', () => {
+    const minting = payment({ withReference: false });
+    minting.meta.preTokenBalances = [{ accountIndex: 2, mint: DOLLAR_MINT, owner: ALICE, uiTokenAmount: { amount: cents(0) } }];
+    minting.meta.postTokenBalances = [{ accountIndex: 2, mint: DOLLAR_MINT, owner: ALICE, uiTokenAmount: { amount: cents(1_000_000_000_00) } }];
+    const instructions = minting.transaction.message.instructions as { program: string; programId: string; parsed: unknown }[];
+    instructions[1] = { program: 'spl-token', programId: TOKEN, parsed: { type: 'mintTo', info: { account: ALICE_ATA, amount: cents(1_000_000_000_00), mint: DOLLAR_MINT, mintAuthority: ALICE } } };
+    expect(describe(8, 'sig', minting, DOLLAR_MINT, BASE_UNITS_PER_CENT)).toMatchObject({ kind: 'mint', to: ALICE, amountCents: 1_000_000_000_00 });
+  });
+
   it('calls a transfer of some other token other', () => {
     const other = payment();
     for (const balance of [...other.meta.preTokenBalances, ...other.meta.postTokenBalances]) balance.mint = 'OtherMint111111111111111111111111111111111';

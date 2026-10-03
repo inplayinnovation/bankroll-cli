@@ -8,7 +8,8 @@
 // else happened (SOL for fees, an account made), or that it failed and why.
 //
 // Rows name addresses, not people: the host puts names to them when it hands
-// the list out, so a user renamed is renamed throughout.
+// the list out, so a user renamed is renamed throughout, and the bank's
+// minting reads as minting.
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
 /** The programs whose instructions the rows understand. */
@@ -37,6 +38,8 @@ const RECONNECT_MS = 1_000;
 export type TransactionKind =
   /** The dollar, one wallet to another. */
   | 'transfer'
+  /** New dollars, minted to a wallet: the bank's float, when the chain starts and when it runs low. */
+  | 'mint'
   /** SOL moved, or dropped from the sky: what pays the fees. */
   | 'fees'
   /** A dollar account made, and nothing else. */
@@ -151,12 +154,18 @@ export function describe(seq: number, signature: string, parsed: ParsedTransacti
   const meantAmount = typeof meantInfo.tokenAmount === 'object' && meantInfo.tokenAmount !== null ? (meantInfo.tokenAmount as { amount?: string }).amount : typeof meantInfo.amount === 'string' ? meantInfo.amount : undefined;
   const meantMint = typeof meantInfo.mint === 'string' ? meantInfo.mint : undefined;
 
+  const minted = all.find((instruction) => TOKEN_PROGRAMS.has(instruction.program ?? '') && typeof instruction.parsed === 'object' && /^mintTo/.test(instruction.parsed?.type ?? ''));
+
   let kind: TransactionKind = 'other';
   let from: string | undefined;
   let to: string | undefined;
   let recipients: { to: string; amountCents: number }[] | undefined;
   let amountCents: number | undefined;
-  if (payers.length === 1 && payees.length >= 1) {
+  if (minted && payers.length === 0 && payees.length === 1) {
+    kind = 'mint';
+    to = payees[0]![0];
+    amountCents = Number(payees[0]![1] / baseUnitsPerCent);
+  } else if (payers.length === 1 && payees.length >= 1) {
     kind = 'transfer';
     from = payers[0]![0];
     if (payees.length === 1) to = payees[0]![0];

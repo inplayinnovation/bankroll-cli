@@ -109,17 +109,21 @@ allowed, identity verification for a user who has none, and a deposit, which
 adds fake dollars. A refusal reaches the app with the phone's words for it, so
 `consent_declined`, `payment_denied` and the rest can be tried.
 
-The money is real to a chain. `dev` starts [surfpool](https://surfpool.run), a
-local Solana network, fresh each time, if it is installed (`curl -sL
-https://run.surfpool.run/ | bash`), and points the app's server at it. The
-Bankroll dollar exists there at its real address. The fake dollars come from
-one place, the simulator's bank, which the chain's cheat call fills once at
-the start; everything after that is a transfer: each user's starting balance,
-the treasury's float, every deposit. A payment is a transfer the app's server
-confirms with the SDK's real code: payee, token, amount and memo are checked
-as they are in production, and a charge is found by its reference. Nothing
-made here is valid anywhere else. Without surfpool the app still runs and
-users still have sessions and balances; payments are refused, with the reason.
+The money is real to a chain. `dev` runs [surfpool](https://surfpool.run), a
+local Solana node, offline and fresh each time, and points the app's server at
+it. The node arrives once per computer: `bankroll apps create` fetches the
+release the CLI pins (about 33 MB, checked against its SHA-256) after `npm
+install`, and `dev` fetches it if it finds none, into
+`~/.config/bankroll/simulator/surfpool/`; a surfpool already on your PATH is
+used when the fetch fails. The Bankroll dollar is created on the chain at its
+real address when it starts, with the simulator's bank as the authority that
+may mint it. The bank mints its float, and every dollar after that moves by
+transfer: each user's starting balance, the treasury's float, every deposit. A
+payment is a transfer the app's server confirms with the SDK's real code:
+payee, token, amount and memo are checked as they are in production, and a
+charge is found by its reference. Nothing made here is valid anywhere else.
+Without a node the app still runs and users still have sessions and balances;
+payments are refused, with the reason.
 
 The sidebar's middle has two tabs. **SDK Calls** lists every call the app
 makes to its host, with what went in and what came back. **Transactions**

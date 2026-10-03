@@ -41,7 +41,8 @@
     "dogfood": "node scripts/dogfood.mjs",
     "prepack": "npm run build",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pin-surfpool": "node scripts/pin-surfpool.mjs"
   },
   "publishConfig": {
     "access": "public"

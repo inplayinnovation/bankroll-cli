@@ -8,7 +8,7 @@ import { loadPeople } from "./people";
 // rows, newest first; a new row also means balances moved, so the users are
 // asked for again.
 
-export type TransactionKind = "transfer" | "fees" | "account" | "other";
+export type TransactionKind = "transfer" | "mint" | "fees" | "account" | "other";
 
 export interface Instruction {
   program: string;
