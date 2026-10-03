@@ -623,17 +623,6 @@ body {
   background: color-mix(in srgb, var(--background) 92%, var(--foreground));
 }
 
-.sidebar-header {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 12px 8px 16px;
-  border-bottom: 1px solid var(--line);
-}
-
 .sidebar-title {
   font-size: 13px;
   font-weight: 600;
@@ -679,43 +668,147 @@ body {
   font-size: 12px;
 }
 
-/* --- Person: who the app is shown to ----------------------------------- */
+/* --- Section headers and icon buttons, as a design tool draws its panels -- */
 
-.person {
-  flex: none;
-  border-bottom: 1px solid var(--line);
-}
-
-.person-header {
+/* One title row per section: the title at the left, its one action as an
+   icon at the right. The old header keeps its height for the app's name. */
+.section-header {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   min-height: 40px;
-  padding: 6px 12px 6px 16px;
+  padding: 4px 10px 4px 16px;
 }
 
-/* The top bar's menu, in the sidebar's size; the person's name is cut before the menu is. */
-.person-select {
-  min-width: 0;
-  max-width: 240px;
+.section-header .sidebar-subtitle {
+  margin-top: 1px;
+}
+
+.icon-button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
   height: 24px;
+  border-radius: 5px;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  cursor: default;
+}
+
+.icon-button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* --- Users: who the app is shown to --------------------------------------- */
+
+.users {
+  flex: none;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Rows inset from the edges, so the chosen one's fill reads as a pill, as a
+   design tool's page list does. */
+.user-list {
+  display: grid;
+  gap: 1px;
+  padding: 0 8px;
+}
+
+.user-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  outline: none;
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  cursor: default;
+}
+
+.user-row:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.user-row:focus-visible {
+  box-shadow: inset 0 0 0 1.5px #0a84ff;
+}
+
+.user-row[aria-selected="true"] {
+  color: var(--foreground);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+}
+
+.user-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
-  font-size: 12.5px;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.person-waiting {
+.user-rename {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  margin: 0 -5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  outline: none;
+  color: var(--foreground);
+  font: inherit;
+  background: color-mix(in srgb, var(--background) 60%, var(--foreground) 6%);
+  box-shadow: 0 0 0 1.5px #0a84ff;
+}
+
+.user-balance {
+  flex: none;
   color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 400;
 }
 
-.person-form {
+/* The pencil and the x: there when the pointer rests on the row, and in the
+   room the balance would have had. */
+.user-actions {
+  display: none;
+  flex: none;
+  gap: 2px;
+  margin-right: -4px;
+}
+
+.user-row:hover .user-actions,
+.user-row:focus-within .user-actions {
+  display: flex;
+}
+
+.user-row:hover .user-balance,
+.user-row:focus-within .user-balance {
+  display: none;
+}
+
+.user-form {
   display: grid;
   gap: 8px;
-  padding: 2px 16px 12px;
+  margin: 4px 8px 6px;
+  padding: 10px 10px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
-.person-field,
+.user-field,
 .sheet-card-field {
   display: grid;
   grid-template-columns: 64px 1fr;
@@ -724,7 +817,7 @@ body {
   color: var(--quiet);
 }
 
-.person-input {
+.user-input {
   min-width: 0;
   height: 26px;
   padding: 0 8px;
@@ -736,16 +829,31 @@ body {
   background: color-mix(in srgb, var(--foreground) 7%, transparent);
 }
 
-.person-input:focus-visible {
+.user-input:focus-visible {
   box-shadow: 0 0 0 2px #0a84ff;
 }
 
-.person-problem {
+.user-problem {
   color: var(--failed);
   line-height: 1.4;
 }
 
-.person-actions,
+/* The wallet, where it can be selected and copied. */
+.user-wallet {
+  overflow: hidden;
+  color: var(--quiet);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-wallet code {
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  font-family: var(--font-mono);
+  user-select: all;
+}
+
+.user-form-actions,
 .sheet-card-actions {
   display: flex;
   justify-content: flex-end;
@@ -1010,10 +1118,26 @@ body {
 }
 
 .runtime-line:hover > .runtime-tip,
-.runtime-line:focus-visible > .runtime-tip {
+.runtime-line:focus-visible > .runtime-tip,
+.has-tip:hover > .runtime-tip,
+.has-tip:focus-visible > .runtime-tip {
   visibility: visible;
   opacity: 1;
   transition-delay: 600ms;
+}
+
+/* A user's tip opens beside the sidebar, over the stage, so it never covers
+   the rows under it on the pointer's way down the list; and it takes no
+   pointer, since there is nothing in it to copy (the wallet is in the form). */
+.users .runtime-tip {
+  top: -4px;
+  right: calc(100% + 2px);
+  bottom: auto;
+  left: auto;
+  width: 280px;
+  padding: 0 6px 0 0;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .runtime-tip-card {
@@ -1036,6 +1160,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-mono);
   font-size: 11.5px;
+  /* An address is one long word; it breaks rather than leave the card. */
+  overflow-wrap: anywhere;
 }
 
 .runtime-note {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { decide, useSheets, type Sheet } from "@/lib/host";
-import { dollars } from "./person";
+import { dollars } from "@/lib/format";
 
 // What the phone would show its user, shown to the developer instead: a box
 // under the call's row, with the facts and the two answers. Consent the first
@@ -99,7 +99,7 @@ function VerifyCard({ sheet, deciding }: { sheet: Extract<Sheet, { kind: "verify
     >
       <label className="sheet-card-field">
         <span>Age</span>
-        <input className="person-input" value={age} onChange={(event) => setAge(event.target.value)} inputMode="numeric" />
+        <input className="user-input" value={age} onChange={(event) => setAge(event.target.value)} inputMode="numeric" />
       </label>
     </Card>
   );
@@ -135,7 +135,7 @@ function DepositCard({ sheet, deciding }: { sheet: Extract<Sheet, { kind: "depos
     >
       <label className="sheet-card-field">
         <span>Amount</span>
-        <input className="person-input" value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" />
+        <input className="user-input" value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" />
       </label>
     </Card>
   );

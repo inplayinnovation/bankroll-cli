@@ -230,7 +230,7 @@ async function simulate(
 
   const update = await notice;
   const person = people.current();
-  console.log(`\n  Your app is open in the simulator, shown to ${person.username}, a pretend person.`);
+  console.log(`\n  Your app is open in the simulator, shown to ${person.username}, a pretend user.`);
   if (chain) console.log(`  Payments settle in fake dollars on a local chain at ${chain.rpc}; nothing is real.`);
   else console.log(`  ${simulated.problem ?? 'The local chain did not start, so payments are refused.'}`);
   console.log(`  ${simulator.url}\n`);

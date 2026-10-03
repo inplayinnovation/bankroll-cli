@@ -4,6 +4,8 @@
 //   GET  /api/host/people          everyone, and who the app is shown to
 //   POST /api/host/people          a new person: { username, age, balanceCents }
 //   POST /api/host/people/select   { id }: show the app to this person
+//   POST /api/host/people/update   { id, username?, age?, balanceCents? }: change a person
+//   POST /api/host/people/remove   { id }: forget a person; not the last
 //   GET  /api/host/treasury?app=   where the app is paid, and what that holds
 //   POST /api/host/call            { app, feature, input }: a call from the app, relayed
 //   POST /api/host/decide          { sheet, approve, input }: the developer answered a sheet
@@ -83,6 +85,34 @@ export async function handleHostRequest(host: Host, request: IncomingMessage, re
         send(response, 200, host.selectPerson(id));
       } catch (error) {
         send(response, 404, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+    if (method === 'POST' && path === '/people/update') {
+      const { id, ...changes } = await readBody(request);
+      if (typeof id !== 'string') {
+        send(response, 400, { error: 'id must name a person' });
+        return;
+      }
+      try {
+        send(response, 200, { person: await host.updatePerson(id, changes) });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        send(response, message.startsWith('no person') ? 404 : 400, { error: message });
+      }
+      return;
+    }
+    if (method === 'POST' && path === '/people/remove') {
+      const { id } = await readBody(request);
+      if (typeof id !== 'string') {
+        send(response, 400, { error: 'id must name a person' });
+        return;
+      }
+      try {
+        send(response, 200, host.removePerson(id));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        send(response, message.startsWith('no person') ? 404 : 400, { error: message });
       }
       return;
     }

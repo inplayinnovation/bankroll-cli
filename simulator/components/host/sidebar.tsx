@@ -5,15 +5,18 @@ import { hostOf } from "@/lib/apps";
 import { clearHostLog, useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
 import { useOpenApp } from "@/lib/open-app";
-import { PersonPicker } from "./person";
+import { ClearIcon, IconButton } from "./icons";
 import { Runtime } from "./runtime";
 import { SheetList } from "./sheet";
+import { Users } from "./users";
 
 // How long an app gets to report before the sidebar says why it may not be.
 const PATIENCE_MS = 2500;
 
 /**
- * The column beside the phone. At the top, who the app is shown to. Then every
+ * The column beside the phone, laid out as a design tool lays out its panels:
+ * a title row per section, with its one action as an icon at the right, and
+ * rows under it. At the top, the users the app can be shown to. Then every
  * call the open app makes to its host: one section per call the SDK offers,
  * always listed and under the SDK's name for it, with how many times it was
  * made; a section opens to its calls, and its header flashes each time one is
@@ -26,7 +29,7 @@ export function HostSidebar() {
 
   return (
     <aside className="sidebar" aria-label="Host calls">
-      {url !== undefined && <PersonPicker />}
+      {url !== undefined && <Users />}
       {/* Empty until it is known whether an app is open: a note that an app replaces a moment later is a flicker. */}
       {url === undefined ? null : url ? (
         <OpenAppCalls key={url} url={url} />
@@ -61,14 +64,14 @@ function OpenAppCalls({ url }: { url: string }) {
 
   return (
     <>
-      <header className="sidebar-header">
+      <header className="section-header">
         <div className="min-w-0">
           <h2 className="sidebar-title">Host calls</h2>
           <p className="sidebar-subtitle">{name}</p>
         </div>
-        <button type="button" className="sidebar-button" onClick={clearHostLog}>
-          Clear
-        </button>
+        <IconButton label="Clear the calls" onClick={clearHostLog}>
+          <ClearIcon />
+        </IconButton>
       </header>
       {!connected && waited && (
         <p className="sidebar-notice">
@@ -87,7 +90,7 @@ function OpenAppCalls({ url }: { url: string }) {
 function SidebarNote({ title, children }: { title: string; children: ReactNode }) {
   return (
     <>
-      <header className="sidebar-header">
+      <header className="section-header">
         <h2 className="sidebar-title">{title}</h2>
       </header>
       <p className="sidebar-empty">{children}</p>

@@ -190,4 +190,32 @@ export class People {
     person.balanceCents = balanceCents;
     this.save();
   }
+
+  /** Changes what was asked of a person. Throws the reason when the result is not a person. */
+  update(id: string, changes: Partial<NewPerson>): Person {
+    const person = this.find(id);
+    if (!person) throw new Error(`no person ${id}`);
+    const next: NewPerson = {
+      username: changes.username ?? person.username,
+      age: changes.age === undefined ? person.age : changes.age,
+      balanceCents: changes.balanceCents ?? person.balanceCents,
+    };
+    const reason = invalidPerson(next);
+    if (reason) throw new Error(reason);
+    person.username = next.username;
+    person.age = next.age;
+    person.balanceCents = next.balanceCents ?? person.balanceCents;
+    this.save();
+    return person;
+  }
+
+  /** Forgets a person. Not the last one: the app is always shown to somebody. */
+  remove(id: string): void {
+    const index = this.file.people.findIndex((person) => person.id === id);
+    if (index === -1) throw new Error(`no person ${id}`);
+    if (this.file.people.length === 1) throw new Error('the last person stays: the app is always shown to somebody');
+    this.file.people.splice(index, 1);
+    if (this.file.current === id) this.file.current = this.file.people[0]!.id;
+    this.save();
+  }
 }

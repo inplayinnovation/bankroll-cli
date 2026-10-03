@@ -106,6 +106,21 @@ describe('People', () => {
     expect(invalidPerson({ username: 'ok', age: null })).toBeNull();
   });
 
+  it('changes a person, and forgets one, but never the last', () => {
+    const path = join(scratch(), 'people.json');
+    const people = new People(path);
+    const tester = people.current();
+    expect(() => people.remove(tester.id)).toThrow(/last person/);
+    const kid = people.create({ username: 'kid', age: null, balanceCents: 25_00 });
+    expect(people.update(kid.id, { username: 'kiddo', balanceCents: 30_00 })).toMatchObject({ username: 'kiddo', age: null, balanceCents: 30_00, wallet: kid.wallet });
+    expect(() => people.update(kid.id, { username: '!!' })).toThrow(/username/);
+    expect(() => people.update('nobody', {})).toThrow(/no person/);
+    people.select(kid.id);
+    people.remove(kid.id);
+    expect(new People(path).current().id).toBe(tester.id);
+    expect(() => people.remove('nobody')).toThrow(/no person/);
+  });
+
   it('keeps grants and verification', () => {
     const path = join(scratch(), 'people.json');
     const people = new People(path);
@@ -299,5 +314,15 @@ describe('Host', () => {
     await expect(h.createPerson({ username: 'no good' })).rejects.toThrow(/username/);
     expect(h.selectPerson(made.id).current).toBe(made.id);
     expect(() => h.selectPerson('nobody')).toThrow(/no person/);
+
+    // A new balance is what they hold now, on the chain too; a new name is not.
+    expect(await h.updatePerson(made.id, { balanceCents: 7_00 })).toMatchObject({ balanceCents: 700 });
+    expect(chain.dollars.get(made.wallet)).toBe(700);
+    chain.ledger.setDollars = vi.fn(async () => {}) as typeof chain.ledger.setDollars;
+    expect(await h.updatePerson(made.id, { username: 'alicia', age: '' })).toMatchObject({ username: 'alicia', age: null, balanceCents: 700 });
+    expect(chain.ledger.setDollars).not.toHaveBeenCalled();
+    await expect(h.updatePerson(made.id, { username: 'bad name' })).rejects.toThrow(/username/);
+    expect(h.removePerson(made.id).people.map((person) => person.username)).toEqual(['tester', 'bob']);
+    expect(() => h.removePerson('nobody')).toThrow(/no person/);
   });
 });

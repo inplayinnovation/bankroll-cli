@@ -79,6 +79,19 @@ describe('/api/host', () => {
     expect(chosen.current).toBe(person.id);
     expect((await post(`${at}/api/host/people/select`, { id: 'nobody' })).status).toBe(404);
     expect((await post(`${at}/api/host/people/select`, {})).status).toBe(400);
+
+    const changed = await post(`${at}/api/host/people/update`, { id: person.id, username: 'alicia', balanceCents: 1 });
+    expect(changed.status).toBe(200);
+    expect(await changed.json()).toMatchObject({ person: { username: 'alicia', balanceCents: 1 } });
+    expect((await post(`${at}/api/host/people/update`, { id: person.id, age: 999 })).status).toBe(400);
+    expect((await post(`${at}/api/host/people/update`, { id: 'nobody' })).status).toBe(404);
+    expect((await post(`${at}/api/host/people/update`, {})).status).toBe(400);
+
+    const gone = await post(`${at}/api/host/people/remove`, { id: person.id });
+    expect(gone.status).toBe(200);
+    expect(((await gone.json()) as { people: { username: string }[] }).people.map((p) => p.username)).toEqual(['tester']);
+    expect((await post(`${at}/api/host/people/remove`, { id: listed.current })).status).toBe(400);
+    expect((await post(`${at}/api/host/people/remove`, { id: 'nobody' })).status).toBe(404);
   });
 
   it('reports the treasury, for the open app', async () => {

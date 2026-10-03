@@ -8,7 +8,7 @@ bankroll login                           # your Bankroll account
 bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
 cd free-throw-duel && npm install        # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
-npm run dev -- --simulator               # or the app in a phone on this computer, shown to a pretend person
+npm run dev -- --simulator               # or the app in a phone on this computer, shown to a pretend user
 git push bankroll main                   # Bankroll builds the test version
 bankroll wait test                       # the build, then the test address and a QR; it takes test cash
 git push bankroll main:live              # publishes it: everyone gets it, paid in real money
@@ -89,18 +89,20 @@ app makes to its host, each with what went in and what came back.
 npm run dev -- --simulator
 ```
 
-The app is shown to a pretend person, and pays in fake dollars on a chain of
-its own. At the top of the sidebar is who that person is: a menu of the people
-on this computer, and a way to make another, with a username, an age or none
-(an account that has not verified), and a balance. Switching starts the app
-over as the next person. The people live in `~/.config/bankroll/simulator/`,
-each with a wallet made up for them, never in your project.
+The app is shown to a pretend user, and pays in fake dollars on a chain of its
+own. At the top of the sidebar are the users on this computer, one row each,
+the chosen one filled in; the + in the title row makes another, with a
+username, an age or none (an account that has not verified), and a balance.
+Double-click a name to rename it, and rest the pointer on a row for a pencil
+and an x. Choosing another user starts the app over as them. The users live in
+`~/.config/bankroll/simulator/`, each with a wallet made up for them, never in
+your project.
 
 The simulator is the app's host, as the Bankroll app is on a phone: it answers
 every call the app makes, and where the phone would stop and ask its user, a
 sheet appears under the call's row for you to answer: consent the first time an
-app asks who the person is, approval of each payment with the time the app
-allowed, identity verification for a person who has none, and a deposit, which
+app asks who the user is, approval of each payment with the time the app
+allowed, identity verification for a user who has none, and a deposit, which
 adds fake dollars. A refusal reaches the app with the phone's words for it, so
 `consent_declined`, `payment_denied` and the rest can be tried.
 
@@ -120,7 +122,7 @@ is never used in the simulator. An app whose manifest names a treasury of its
 own is paid there instead, and the line says so.
 
 `dev` sets `BANKROLL_MOCK=1` for the app, so the SDK's server half accepts a
-pretend person's session token, and `SOLANA_RPC_URL` for the local chain. The
+pretend user's session token, and `SOLANA_RPC_URL` for the local chain. The
 simulator talks to the app through `@joinbankroll/sdk` 0.33.0 or later; on an
 older SDK the app still runs, with no host.
 

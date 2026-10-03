@@ -52,14 +52,37 @@ function publish(next: OpenSheet[]) {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
+// The host restarts when the CLI is rebuilt (npm run dogfood), and is gone
+// for a second or two. A call that lands in that gap is asked again rather
+// than failed: the app would otherwise see a refusal that has nothing to do
+// with it. A host that answers, even with a refusal, is never asked twice.
+const ASK_ATTEMPTS = 4;
+const ASK_AGAIN_MS = 700;
+const GONE = new Set([502, 503, 504]);
+
 async function askHost(path: string, body: unknown): Promise<Answer> {
-  const response = await fetch(`/api/host/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const told: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(isRecord(told) && typeof told.error === "string" ? told.error : `the host answered ${response.status}`);
+  for (let attempt = 1; ; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch(`/api/host/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    } catch (error) {
+      if (attempt < ASK_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, ASK_AGAIN_MS));
+        continue;
+      }
+      throw error;
+    }
+    if (GONE.has(response.status) && attempt < ASK_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, ASK_AGAIN_MS));
+      continue;
+    }
+    const told: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(isRecord(told) && typeof told.error === "string" ? told.error : `the host answered ${response.status}`);
+    }
+    if (!isRecord(told) || typeof told.done !== "boolean") throw new Error("the host's answer made no sense");
+    return told as unknown as Answer;
   }
-  if (!isRecord(told) || typeof told.done !== "boolean") throw new Error("the host's answer made no sense");
-  return told as unknown as Answer;
 }
 
 function show(sheet: Sheet, waiting: CallTarget[]) {

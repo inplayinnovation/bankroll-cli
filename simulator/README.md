@@ -12,12 +12,15 @@ and the CLI serves it from there (`src/simulator.ts`).
 - **The app** is a web page on its own origin, shown in a frame
   (`components/shell/app-frame.tsx`). Which app is open is in the page's URL:
   `/?app=http://localhost:3000/app`.
-- **The person** the app is shown to is at the top of the sidebar
-  (`components/host/person.tsx`, `lib/people.ts`): a menu of the pretend people
-  on this computer, and a way to make another. The people are the CLI's
-  (`src/host/people.ts` there), kept in `~/.config/bankroll/simulator/`; this
-  page asks for the list and says who to show the app to. Switching starts the
-  app over (`lib/reload.ts`): a session belongs to one person.
+- **The users** the app can be shown to are at the top of the sidebar
+  (`components/host/users.tsx`, `lib/people.ts`), one row each, laid out as a
+  design tool lists pages: the chosen row filled, a + in the title row for a
+  new one, a rename on a double click, and a pencil and an x when the pointer
+  rests on a row. The users are the CLI's (`src/host/people.ts` there), kept
+  in `~/.config/bankroll/simulator/`; this page asks for the list and says who
+  to show the app to. Choosing another starts the app over (`lib/reload.ts`):
+  a session belongs to one user. The sidebar's other sections follow the same
+  shape (`components/host/icons.tsx`): a title row with one action as an icon.
 - **The sidebar** (`components/host/sidebar.tsx`) lists the app's host calls:
   the seven the SDK offers, always, under the SDK's names (`charge`, where the
   host hears `pay`), and any other only once the app makes it. `init` is first:

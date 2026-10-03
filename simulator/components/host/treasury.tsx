@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onSettled } from "@/lib/host";
-import { dollars } from "./person";
+import { dollars } from "@/lib/format";
 import { Line } from "./runtime";
 
 // Where the open app is paid, and what that holds on the local chain. For an

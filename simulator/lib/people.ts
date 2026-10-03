@@ -78,6 +78,27 @@ export async function createPerson(input: { username: string; age: number | null
   return made;
 }
 
+/**
+ * Changes a person. The app starts over when the person it is shown to gets a
+ * new name or age, since their session carries both; a new balance is read on
+ * the next ask, as on a phone.
+ */
+export async function updatePerson(id: string, changes: { username?: string; age?: number | null; balanceCents?: number }): Promise<Person> {
+  const before = state.people?.find((person) => person.id === id);
+  const { person } = await post("people/update", { id, ...changes });
+  const changed = person as Person;
+  publish({ ...state, people: state.people?.map((candidate) => (candidate.id === id ? changed : candidate)) });
+  if (id === state.current && before && (before.username !== changed.username || before.age !== changed.age)) reloadApp();
+  return changed;
+}
+
+/** Forgets a person. When the app was shown to them, it starts over as whoever the CLI chose. */
+export async function removePerson(id: string): Promise<void> {
+  const wasCurrent = id === state.current;
+  take(await post("people/remove", { id }));
+  if (wasCurrent) reloadApp();
+}
+
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
   return () => {

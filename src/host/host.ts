@@ -183,6 +183,27 @@ export class Host {
    * names the simulator's treasury in its manifest; an app with a treasury of
    * its own (a server wallet, say) names that, and is paid there.
    */
+  /** Changes a person. A new balance is what they hold from now, on the chain too. Throws the reason when refused. */
+  async updatePerson(id: string, input: unknown): Promise<PublicPerson> {
+    const asked = isRecord(input) ? input : {};
+    const changes: Partial<NewPerson> = {
+      ...(asked.username !== undefined ? { username: typeof asked.username === 'string' ? asked.username.trim() : '' } : {}),
+      ...(asked.age !== undefined ? { age: asked.age === null || asked.age === '' ? null : Number(asked.age) } : {}),
+      ...(asked.balanceCents !== undefined ? { balanceCents: Number(asked.balanceCents) } : {}),
+    };
+    // Read before the change: update() changes the person in place.
+    const held = this.people.find(id)?.balanceCents;
+    const person = this.people.update(id, changes);
+    if (this.ledger && held !== person.balanceCents) await this.ledger.setDollars(person.wallet, person.balanceCents);
+    return publicPerson(person);
+  }
+
+  /** Forgets a person; the app is shown to another when it was theirs. */
+  removePerson(id: string): { people: PublicPerson[]; current: string } {
+    this.people.remove(id);
+    return this.listPeople();
+  }
+
   async treasuryReport(appOrigin?: string): Promise<TreasuryReport> {
     const facts = appOrigin ? await this.appFacts(appOrigin) : null;
     const address = facts?.payee ?? this.treasury.address;
