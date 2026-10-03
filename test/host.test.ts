@@ -90,7 +90,8 @@ describe('People', () => {
     expect(readFileSync(path, 'utf8')).toContain('"secretKey"');
 
     const kid = people.create({ username: 'kid', age: null, balanceCents: 25_00 });
-    expect(kid.wallet).toHaveLength(44);
+    // A base58 key is 43 or 44 characters, depending on its leading bytes.
+    expect(kid.wallet).toMatch(/^[1-9A-HJ-NP-Za-km-z]{43,44}$/);
     people.select(kid.id);
     expect(new People(path).current().username).toBe('kid');
     expect(people.list().every((person) => !('secretKey' in person))).toBe(true);
