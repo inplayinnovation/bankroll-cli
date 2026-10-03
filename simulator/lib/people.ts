@@ -16,6 +16,8 @@ export interface Person {
   wallet: string;
   /** What the person holds when the chain starts fresh, in cents. */
   balanceCents: number;
+  /** What their wallet holds now, on the chain; the starting balance when there is no chain. */
+  heldCents?: number;
   grants: string[];
 }
 

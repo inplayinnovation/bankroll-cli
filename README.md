@@ -82,8 +82,9 @@ on a TTY too. The full play link is printed under the QR either way.
 ### `bankroll dev --simulator`
 
 The other way to look at your app: no phone and no tunnel. Your browser opens a
-page with the app in an iPhone frame, and beside it a list of every call the
-app makes to its host, each with what went in and what came back.
+page with the app in an iPhone frame, and beside it the users the app can be
+shown to, every call the app makes to its host, and the local chain's
+transactions.
 
 ```bash
 npm run dev -- --simulator
@@ -109,12 +110,22 @@ adds fake dollars. A refusal reaches the app with the phone's words for it, so
 The money is real to a chain. `dev` starts [surfpool](https://surfpool.run), a
 local Solana network, fresh each time, if it is installed (`curl -sL
 https://run.surfpool.run/ | bash`), and points the app's server at it. The
-Bankroll dollar exists there at its real address, people hold what you gave
-them, and a payment is a transfer the app's server confirms with the SDK's real
-code: payee, token, amount and memo are checked as they are in production, and
-a charge is found by its reference. Nothing made here is valid anywhere else.
-Without surfpool the app still runs and people still have sessions and
-balances; payments are refused, with the reason.
+Bankroll dollar exists there at its real address. The fake dollars come from
+one place, the simulator's bank, which the chain's cheat call fills once at
+the start; everything after that is a transfer: each user's starting balance,
+the treasury's float, every deposit. A payment is a transfer the app's server
+confirms with the SDK's real code: payee, token, amount and memo are checked
+as they are in production, and a charge is found by its reference. Nothing
+made here is valid anywhere else. Without surfpool the app still runs and
+users still have sessions and balances; payments are refused, with the reason.
+
+The sidebar's middle has two tabs. **SDK Calls** lists every call the app
+makes to its host, with what went in and what came back. **Transactions**
+lists the chain's activity as it happens, newest first: who paid whom how much,
+with the memo, for a transfer of the dollar; SOL for fees and accounts made,
+quieter; a transaction the chain refused, in red with its reason. A row opens
+to the signature, the reference, the slot, the fee payer, the instructions and
+the accounts, each copyable. A user's row shows what their wallet holds now.
 
 The app's treasury here is a key made up for the simulator, shown at the bottom
 of the sidebar with what it holds. Your dev signing key, which holds real money,

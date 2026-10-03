@@ -26,7 +26,9 @@ export function Runtime({ url }: { url: string | null }) {
 
   return (
     <footer className="runtime" aria-label="Runtime">
-      <TreasuryLine origin={url ? new URL(url).origin : null} />
+      <div className="treasury">
+        <TreasuryLine origin={url ? new URL(url).origin : null} />
+      </div>
       <Line
         className="runtime-secure"
         tip={

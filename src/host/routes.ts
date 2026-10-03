@@ -7,6 +7,7 @@
 //   POST /api/host/people/update   { id, username?, age?, balanceCents? }: change a person
 //   POST /api/host/people/remove   { id }: forget a person; not the last
 //   GET  /api/host/treasury?app=   where the app is paid, and what that holds
+//   GET  /api/host/transactions?after=&app=   the chain's activity after a row, with names
 //   POST /api/host/call            { app, feature, input }: a call from the app, relayed
 //   POST /api/host/decide          { sheet, approve, input }: the developer answered a sheet
 //
@@ -63,7 +64,7 @@ export async function handleHostRequest(host: Host, request: IncomingMessage, re
       return;
     }
     if (method === 'GET' && path === '/people') {
-      send(response, 200, host.listPeople());
+      send(response, 200, await host.listPeople());
       return;
     }
     if (method === 'POST' && path === '/people') {
@@ -82,7 +83,7 @@ export async function handleHostRequest(host: Host, request: IncomingMessage, re
         return;
       }
       try {
-        send(response, 200, host.selectPerson(id));
+        send(response, 200, await host.selectPerson(id));
       } catch (error) {
         send(response, 404, { error: error instanceof Error ? error.message : String(error) });
       }
@@ -109,11 +110,18 @@ export async function handleHostRequest(host: Host, request: IncomingMessage, re
         return;
       }
       try {
-        send(response, 200, host.removePerson(id));
+        send(response, 200, await host.removePerson(id));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         send(response, message.startsWith('no person') ? 404 : 400, { error: message });
       }
+      return;
+    }
+    if (method === 'GET' && path === '/transactions') {
+      const query = new URL(request.url ?? '/', 'http://localhost').searchParams;
+      const after = Number(query.get('after') ?? 0);
+      const app = query.get('app');
+      send(response, 200, await host.transactions(Number.isFinite(after) && after > 0 ? after : 0, app && LOCAL_ORIGIN.test(app) ? app : undefined));
       return;
     }
     if (method === 'GET' && path === '/treasury') {

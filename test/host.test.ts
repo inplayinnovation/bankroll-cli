@@ -29,28 +29,46 @@ function appWith(claims: unknown | null): typeof fetch {
   }) as typeof fetch;
 }
 
-/** A chain that keeps balances in a map and pays by moving numbers between them. */
+/** A chain that keeps balances in a map and moves numbers between them, bank included. */
 function fakeLedger(start: Record<string, number> = {}) {
   const dollars = new Map(Object.entries(start));
   const payments: { payer: string; payee: string; amountCents: number; reference?: string; memo?: string }[] = [];
+  const funded: { wallet: string; cents: number }[] = [];
+  const bank = 'BankBankBankBankBankBankBankBankBankBankBank';
+  let sent = 0;
+  const move = (from: string, to: string, cents: number) => {
+    dollars.set(from, (dollars.get(from) ?? 0) - cents);
+    dollars.set(to, (dollars.get(to) ?? 0) + cents);
+    return `sig${++sent}`;
+  };
   const ledger = {
     rpc: 'http://127.0.0.1:8899',
     sponsor: { publicKey: { toBase58: () => 'SponsorSponsorSponsorSponsorSponsorSponsor11' } },
-    prepare: vi.fn(async () => {}),
-    airdrop: vi.fn(async () => {}),
-    setDollars: vi.fn(async (owner: string, cents: number) => {
-      dollars.set(owner, cents);
+    bank: { publicKey: { toBase58: () => bank } },
+    prepare: vi.fn(async () => {
+      dollars.set(bank, 1_000_000_000_00);
     }),
+    airdrop: vi.fn(async () => {}),
     dollarsOf: vi.fn(async (owner: string) => dollars.get(owner) ?? 0),
+    fund: vi.fn(async (recipients: { wallet: string; cents: number }[]) => {
+      funded.push(...recipients);
+      return recipients.filter((r) => r.cents > 0).map((r) => move(bank, r.wallet, r.cents));
+    }),
+    topUp: vi.fn(async (wallet: string, cents: number) => move(bank, wallet, cents)),
+    setBalance: vi.fn(async (secretKey: string, cents: number) => {
+      const owner = bs58.encode(bs58.decode(secretKey).subarray(32));
+      const held = dollars.get(owner) ?? 0;
+      if (held === cents) return null;
+      return held < cents ? move(bank, owner, cents - held) : move(owner, bank, held - cents);
+    }),
     pay: vi.fn(async (input: { payerSecretKey: string; payee: string; amountCents: number; reference?: string; memo?: string }) => {
       const payer = bs58.encode(bs58.decode(input.payerSecretKey).subarray(32));
-      dollars.set(payer, (dollars.get(payer) ?? 0) - input.amountCents);
-      dollars.set(input.payee, (dollars.get(input.payee) ?? 0) + input.amountCents);
+      const signature = move(payer, input.payee, input.amountCents);
       payments.push({ payer, payee: input.payee, amountCents: input.amountCents, ...(input.reference ? { reference: input.reference } : {}), ...(input.memo ? { memo: input.memo } : {}) });
-      return `sig${payments.length}`;
+      return signature;
     }),
   };
-  return { ledger: ledger as unknown as Ledger, dollars, payments };
+  return { ledger: ledger as unknown as Ledger, dollars, payments, funded, bank };
 }
 
 function host(options: { ledger?: Ledger | null; manifest?: unknown | null; chainProblem?: string } = {}) {
@@ -240,7 +258,9 @@ describe('Host', () => {
     await h.start();
     const tester = people.current();
     expect(chain.dollars.get(tester.wallet)).toBe(100_000);
-    expect(chain.dollars.get(h.listPeople().people[0]!.wallet)).toBe(100_000);
+    expect(chain.dollars.get((await h.listPeople()).people[0]!.wallet)).toBe(100_000);
+    expect(chain.funded).toEqual([{ wallet: (await h.treasuryReport()).address, cents: TREASURY_FLOAT_CENTS }, { wallet: tester.wallet, cents: 100_000 }]);
+    expect((await h.listPeople()).people[0]!.heldCents).toBe(100_000);
     expect((await h.treasuryReport()).balanceCents).toBe(TREASURY_FLOAT_CENTS);
 
     expect(errorOf(await h.call(APP, FEATURES.pay, { amountCents: 200_000 }))).toBe(WIRE_INSUFFICIENT_FUNDS);
@@ -253,11 +273,12 @@ describe('Host', () => {
     // The same key for another payment: refused.
     expect(errorOf(await h.call(APP, FEATURES.pay, { amountCents: 600, idempotencyKey: 'k1' }))).toBe('idempotency_conflict');
 
-    expect(valueOf(await h.decide(sheet.id, true, undefined))).toBe('sig1');
+    const signature = valueOf(await h.decide(sheet.id, true, undefined)) as string;
+    expect(signature).toMatch(/^sig\d+$/);
     expect(chain.payments).toEqual([{ payer: tester.wallet, payee: PAYEE, amountCents: 500, reference, memo: 'one game' }]);
     expect(chain.dollars.get(tester.wallet)).toBe(99_500);
     // The same key again, settled: the same signature, no sheet.
-    expect(valueOf(await h.call(APP, FEATURES.pay, { amountCents: 500, memo: 'one game', idempotencyKey: 'k1', reference }))).toBe('sig1');
+    expect(valueOf(await h.call(APP, FEATURES.pay, { amountCents: 500, memo: 'one game', idempotencyKey: 'k1', reference }))).toBe(signature);
 
     // Declined, and the key is free again.
     const declined = sheetOf(await h.call(APP, FEATURES.pay, { amountCents: 100, idempotencyKey: 'k2' }));
@@ -308,22 +329,29 @@ describe('Host', () => {
   it('makes people, with their balance on the chain from the start, and refuses what is not a person', async () => {
     const chain = fakeLedger();
     const { host: h } = host({ ledger: chain.ledger });
+    await h.start();
     const made = await h.createPerson({ username: 'alice', age: '42', balanceCents: 5_00 });
     expect(made).toMatchObject({ username: 'alice', age: 42, balanceCents: 500 });
     expect(chain.dollars.get(made.wallet)).toBe(500);
+    expect(chain.ledger.topUp).toHaveBeenCalledWith(made.wallet, 500);
     expect(await h.createPerson({ username: 'bob', age: '' })).toMatchObject({ age: null, balanceCents: 100_000 });
     await expect(h.createPerson({ username: 'no good' })).rejects.toThrow(/username/);
-    expect(h.selectPerson(made.id).current).toBe(made.id);
-    expect(() => h.selectPerson('nobody')).toThrow(/no person/);
+    expect((await h.selectPerson(made.id)).current).toBe(made.id);
+    await expect(h.selectPerson('nobody')).rejects.toThrow(/no person/);
 
-    // A new balance is what they hold now, on the chain too; a new name is not.
+    // A new balance is what they hold now, on the chain too, by a transfer
+    // from the bank, or back to it; a new name moves nothing.
+    const bankBefore = chain.dollars.get(chain.bank)!;
     expect(await h.updatePerson(made.id, { balanceCents: 7_00 })).toMatchObject({ balanceCents: 700 });
     expect(chain.dollars.get(made.wallet)).toBe(700);
-    chain.ledger.setDollars = vi.fn(async () => {}) as typeof chain.ledger.setDollars;
-    expect(await h.updatePerson(made.id, { username: 'alicia', age: '' })).toMatchObject({ username: 'alicia', age: null, balanceCents: 700 });
-    expect(chain.ledger.setDollars).not.toHaveBeenCalled();
+    expect(chain.dollars.get(chain.bank)).toBe(bankBefore - 200);
+    expect(await h.updatePerson(made.id, { balanceCents: 1_00 })).toMatchObject({ balanceCents: 100 });
+    expect(chain.dollars.get(chain.bank)).toBe(bankBefore + 400);
+    const moves = (chain.ledger.setBalance as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(await h.updatePerson(made.id, { username: 'alicia', age: '' })).toMatchObject({ username: 'alicia', age: null, balanceCents: 100 });
+    expect((chain.ledger.setBalance as ReturnType<typeof vi.fn>).mock.calls.length).toBe(moves);
     await expect(h.updatePerson(made.id, { username: 'bad name' })).rejects.toThrow(/username/);
-    expect(h.removePerson(made.id).people.map((person) => person.username)).toEqual(['tester', 'bob']);
-    expect(() => h.removePerson('nobody')).toThrow(/no person/);
+    expect((await h.removePerson(made.id)).people.map((person) => person.username)).toEqual(['tester', 'bob']);
+    await expect(h.removePerson('nobody')).rejects.toThrow(/no person/);
   });
 });

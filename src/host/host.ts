@@ -17,7 +17,7 @@
 import { PublicKey } from '@solana/web3.js';
 
 import { manifestClaims, MANIFEST_PATH } from '../manifest';
-import type { Ledger } from './chain';
+import { BASE_UNITS_PER_CENT, DOLLAR_MINT, type Ledger } from './chain';
 import { invalidPerson, type NewPerson, type People, type Person, publicPerson, type PublicPerson } from './people';
 import {
   type AppFacts,
@@ -31,6 +31,7 @@ import {
   WIRE_VERIFICATION_DECLINED,
 } from './payments';
 import { sessionToken } from './tokens';
+import { type ChainTransaction, Watcher } from './transactions';
 
 /** The phone's name for each call, as the bridge sends it. */
 export const FEATURES = {
@@ -108,6 +109,22 @@ export interface HostOptions {
   ledger: Ledger | null;
   chainProblem?: string;
   fetchImpl?: typeof fetch;
+  /** Where a problem with the chain is said; nowhere unless given. */
+  log?: (line: string) => void;
+}
+
+/** A person as the sidebar lists them: with what their wallet holds now. */
+export interface ListedPerson extends PublicPerson {
+  /** On the chain, in cents; the starting balance when there is no chain. */
+  heldCents: number;
+}
+
+/** The chain's activity since a point, and the names of the wallets in it. */
+export interface TransactionsReport {
+  /** The last row's place; what to ask for more after. */
+  after: number;
+  entries: ChainTransaction[];
+  names: Record<string, string>;
 }
 
 export interface TreasuryReport {
@@ -130,6 +147,9 @@ export class Host {
   private readonly ledger: Ledger | null;
   private readonly chainProblem: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly log: (line: string) => void;
+  /** Hears the chain, when there is one. */
+  readonly watcher: Watcher | null;
   private readonly held = new Map<string, Held>();
   private readonly paid = new Map<string, Paid>();
   private readonly facts = new Map<string, { facts: AppFacts; at: number }>();
@@ -141,24 +161,35 @@ export class Host {
     this.ledger = options.ledger;
     this.chainProblem = options.chainProblem ?? 'there is no local chain';
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.log = options.log ?? (() => {});
+    this.watcher = this.ledger ? new Watcher({ rpc: this.ledger.rpc, mint: DOLLAR_MINT, baseUnitsPerCent: BASE_UNITS_PER_CENT, log: this.log }) : null;
   }
 
-  /** Funds the treasury and brings every person up to their balance, on a chain that just started. */
+  /**
+   * On a chain that just started: listens from the first moment, readies the
+   * bank, and funds the treasury and every person from it, in a transaction
+   * or two, so what everyone holds is on the chain's record.
+   */
   async start(): Promise<void> {
     if (!this.ledger) return;
+    this.watcher?.start();
     await this.ledger.prepare();
     await this.ledger.airdrop(new PublicKey(this.treasury.address));
-    await this.ledger.setDollars(this.treasury.address, TREASURY_FLOAT_CENTS);
-    for (const person of this.people.list()) await this.ledger.setDollars(person.wallet, person.balanceCents);
+    await this.ledger.fund([{ wallet: this.treasury.address, cents: TREASURY_FLOAT_CENTS }, ...this.people.list().map((person) => ({ wallet: person.wallet, cents: person.balanceCents }))]);
+  }
+
+  stop(): void {
+    this.watcher?.stop();
   }
 
   // -- People -------------------------------------------------------------
 
-  listPeople(): { people: PublicPerson[]; current: string } {
-    return { people: this.people.list(), current: this.people.current().id };
+  async listPeople(): Promise<{ people: ListedPerson[]; current: string }> {
+    const people = await Promise.all(this.people.list().map(async (person) => ({ ...person, heldCents: this.ledger ? await this.ledger.dollarsOf(person.wallet) : person.balanceCents })));
+    return { people, current: this.people.current().id };
   }
 
-  selectPerson(id: string): { people: PublicPerson[]; current: string } {
+  async selectPerson(id: string): Promise<{ people: ListedPerson[]; current: string }> {
     this.people.select(id);
     return this.listPeople();
   }
@@ -174,7 +205,7 @@ export class Host {
     const reason = invalidPerson(person);
     if (reason) throw new Error(reason);
     const made = this.people.create(person);
-    if (this.ledger) await this.ledger.setDollars(made.wallet, made.balanceCents);
+    if (this.ledger && made.balanceCents > 0) await this.ledger.topUp(made.wallet, made.balanceCents);
     return publicPerson(made);
   }
 
@@ -194,14 +225,33 @@ export class Host {
     // Read before the change: update() changes the person in place.
     const held = this.people.find(id)?.balanceCents;
     const person = this.people.update(id, changes);
-    if (this.ledger && held !== person.balanceCents) await this.ledger.setDollars(person.wallet, person.balanceCents);
+    if (this.ledger && held !== person.balanceCents) await this.ledger.setBalance(person.secretKey, person.balanceCents);
     return publicPerson(person);
   }
 
   /** Forgets a person; the app is shown to another when it was theirs. */
-  removePerson(id: string): { people: PublicPerson[]; current: string } {
+  async removePerson(id: string): Promise<{ people: ListedPerson[]; current: string }> {
     this.people.remove(id);
     return this.listPeople();
+  }
+
+  // -- The chain's activity -------------------------------------------------
+
+  /** The chain's transactions after a point, with names for the wallets this host knows. `origin` names the open app's payee. */
+  async transactions(after = 0, origin?: string): Promise<TransactionsReport> {
+    const entries = this.watcher?.list(after) ?? [];
+    const names: Record<string, string> = {};
+    for (const person of this.people.list()) names[person.wallet] = person.username;
+    names[this.treasury.address] = 'treasury';
+    if (this.ledger) {
+      names[this.ledger.bank.publicKey.toBase58()] = 'Bankroll';
+      names[this.ledger.sponsor.publicKey.toBase58()] = 'sponsor';
+    }
+    if (origin) {
+      const facts = await this.appFacts(origin);
+      if (facts.payee) names[facts.payee] = facts.name ?? origin.replace(/^https?:\/\//, '');
+    }
+    return { after: entries.length ? entries[entries.length - 1]!.seq : after, entries, names };
   }
 
   async treasuryReport(appOrigin?: string): Promise<TreasuryReport> {
@@ -265,7 +315,7 @@ export class Host {
         if (!approve) return answered();
         const amount = isRecord(input) && typeof input.amountCents === 'number' && Number.isInteger(input.amountCents) && input.amountCents > 0 ? input.amountCents : sheet.amountCents;
         if (!this.ledger) return refused(this.chainProblem);
-        await this.ledger.setDollars(person.wallet, (await this.ledger.dollarsOf(person.wallet)) + amount);
+        await this.ledger.topUp(person.wallet, amount);
         return answered();
       }
     }

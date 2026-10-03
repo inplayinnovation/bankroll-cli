@@ -225,6 +225,7 @@ async function simulate(
   });
   stop = () => {
     simulator.stop();
+    host.stop();
     chain?.stop();
   };
 

@@ -20,14 +20,22 @@ and the CLI serves it from there (`src/simulator.ts`).
   in `~/.config/bankroll/simulator/`; this page asks for the list and says who
   to show the app to. Choosing another starts the app over (`lib/reload.ts`):
   a session belongs to one user. The sidebar's other sections follow the same
-  shape (`components/host/icons.tsx`): a title row with one action as an icon.
-- **The sidebar** (`components/host/sidebar.tsx`) lists the app's host calls:
-  the seven the SDK offers, always, under the SDK's names (`charge`, where the
-  host hears `pay`), and any other only once the app makes it. `init` is first:
-  an app calls it before anything else, and it says which SDK the app runs. A
-  call that fails flashes its row red and is counted as failed. That includes a
+  shape (`components/host/icons.tsx`): a title row, with an action as an icon where there is one.
+- **The sidebar** (`components/host/sidebar.tsx`) has two tabs in its middle,
+  as a design tool's panel does. **SDK Calls** lists the app's host calls: the seven the SDK
+  offers, always, under the SDK's names (`charge`, where the host hears
+  `pay`), and any other only once the app makes it. `init` is first: an app
+  calls it before anything else, and it says which SDK the app runs. A call
+  that fails flashes its row red and is counted as failed. That includes a
   call the SDK refuses before it asks the host, one made before `init()`: the
-  bridge tells this page of it.
+  bridge tells this page of it. **Transactions** (`components/host/transactions.tsx`,
+  `lib/transactions.ts`) lists the local chain's activity, newest first, as the
+  CLI hears it over the chain's websocket (`src/host/transactions.ts` there,
+  `/api/host/transactions`): a transfer of the dollar as who → whom and how
+  much, with the memo; SOL for fees and accounts made, quieter; a refused
+  transaction in red with its reason. A row opens to the facts, each
+  copyable. New rows also mean balances moved, so the users are asked for
+  again; a user's row shows what their wallet holds now.
 - **The host** is the CLI (`src/host/` there), and this page is how the app
   reaches it. The app is another origin, so nothing of it can be read from
   here: the SDK puts a bridge on the app's page, which sends each call here in
@@ -50,8 +58,8 @@ and the CLI serves it from there (`src/simulator.ts`).
 - **What the app runs in** is along the bottom of the sidebar
   (`components/host/runtime.tsx`): where the app is paid and what that holds
   on the local chain (`components/host/treasury.tsx`: the simulator's made-up
-  treasury, or the app's own when its manifest names one), a lock and "Secure
-  Runtime", then a line each for the SDK the open app runs and the CLI serving
+  treasury, or the app's own when its manifest names one), then under a line,
+  a lock and "Secure Runtime", then a line each for the SDK the open app runs and the CLI serving
   the page, with a word beside a version when there is something to say. `local` is a build of
   someone's own, `update` a later release, `stale` an install that is not what
   the project asks for. A line says more when the pointer rests on it. The app

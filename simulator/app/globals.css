@@ -719,7 +719,7 @@ body {
    design tool's page list does. */
 .user-list {
   display: grid;
-  gap: 1px;
+  gap: 4px;
   padding: 0 8px;
 }
 
@@ -873,6 +873,201 @@ body {
   opacity: 0.5;
 }
 
+/* --- The middle: tabs over the calls, or the chain's transactions ---------- */
+
+.middle {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs-header {
+  padding-left: 8px;
+}
+
+/* Text tabs, as a design tool's panel has: the chosen one bright, with a line under it. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tab {
+  position: relative;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--quiet);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+}
+
+.tab:hover {
+  color: var(--foreground);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--foreground);
+}
+
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: #0a84ff;
+}
+
+/* --- Transactions: the local chain's activity, newest first ---------------- */
+
+.transactions {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.transaction {
+  border-bottom: 1px solid var(--line);
+}
+
+.transaction-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 14px 0 16px;
+  text-align: left;
+  cursor: default;
+}
+
+.transaction-line:hover {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+.transaction-line[aria-expanded="true"] .call-chevron {
+  rotate: 90deg;
+}
+
+.transaction-when {
+  flex: none;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.transaction-who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-arrow {
+  color: var(--quiet);
+}
+
+.transaction-amount {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* SOL for fees, accounts made: there, but not what anyone came to see. */
+.transaction[data-quiet] .transaction-who,
+.transaction[data-quiet] .transaction-amount {
+  color: var(--quiet);
+}
+
+.transaction[data-failed] .transaction-who,
+.transaction[data-failed] .transaction-amount {
+  color: var(--failed);
+}
+
+.transaction-note {
+  padding: 0 14px 8px 46px;
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.transaction-failed {
+  color: var(--failed);
+}
+
+.transaction-facts {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 6px 10px;
+  padding: 4px 14px 12px 46px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.transaction-facts dt {
+  color: var(--quiet);
+}
+
+.transaction-facts dd {
+  min-width: 0;
+}
+
+.transaction-instructions,
+.transaction-accounts {
+  display: grid;
+  gap: 4px;
+}
+
+.transaction-instructions > li > span {
+  overflow-wrap: anywhere;
+}
+
+/* Addresses and amounts are long words; they wrap rather than hide. */
+.transaction-instructions pre {
+  margin-top: 2px;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A value that copies on a click: the whole of it, wrapped, in a hand's reach. */
+.copyable {
+  display: block;
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: default;
+}
+
+.copyable code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.copyable:hover code {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-color: var(--quiet);
+}
+
+.copyable-name {
+  color: var(--quiet);
+}
+
+.copyable-done {
+  color: var(--quiet);
+  font-size: 11px;
+}
+
 /* --- Sheets: what the phone would ask its user, under the call's row ------- */
 
 .sheets {
@@ -902,6 +1097,13 @@ body {
 }
 
 /* --- Treasury: the app's wallet in the simulator --------------------------- */
+
+/* Its own block above the runtime lines, with a line between. */
+.treasury {
+  margin-bottom: 7px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+}
 
 .treasury-line .runtime-name {
   width: auto;

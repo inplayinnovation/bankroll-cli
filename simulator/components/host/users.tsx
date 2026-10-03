@@ -10,8 +10,9 @@ import { IconButton, PencilIcon, PlusIcon, XIcon } from "./icons";
 // title row makes another, through a small form; a row renames on a double
 // click, and shows a pencil and an x when the pointer rests on it: the pencil
 // opens the same form on that user, the x forgets them, never the last one.
-// A user's age, or that they have not verified, and their wallet show when
-// the pointer rests on the row.
+// The balance on a row is what the wallet holds now, on the chain; a user's
+// age, or that they have not verified, and their wallet show when the pointer
+// rests on the row.
 
 export function Users() {
   const { people, current, problem } = usePeople();
@@ -98,7 +99,7 @@ function UserRow({ person, selected, alone, editing, onEdit, onDone }: { person:
         ) : (
           <span className="user-name">{person.username}</span>
         )}
-        <span className="user-balance">{dollars(person.balanceCents)}</span>
+        <span className="user-balance">{dollars(person.heldCents ?? person.balanceCents)}</span>
         <span className="user-actions" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
           <IconButton label={`Edit ${person.username}`} onClick={onEdit}>
             <PencilIcon />
@@ -110,6 +111,7 @@ function UserRow({ person, selected, alone, editing, onEdit, onDone }: { person:
         <div className="runtime-tip" role="tooltip">
           <div className="runtime-tip-card">
             <p>{person.age === null ? `${person.username} has not verified their identity.` : `${person.username} is ${person.age}, verified.`}</p>
+            {person.heldCents !== undefined && person.heldCents !== person.balanceCents && <p>Holds {dollars(person.heldCents)}; starts each run with {dollars(person.balanceCents)}.</p>}
             <p>
               Wallet <code>{person.wallet}</code>
             </p>

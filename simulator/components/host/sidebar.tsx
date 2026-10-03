@@ -1,14 +1,45 @@
 "use client";
 
-import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { hostOf } from "@/lib/apps";
-import { clearHostLog, useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
+import { useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
 import { useOpenApp } from "@/lib/open-app";
-import { ClearIcon, IconButton } from "./icons";
 import { Runtime } from "./runtime";
 import { SheetList } from "./sheet";
+import { TransactionList } from "./transactions";
 import { Users } from "./users";
+
+// Which of the two lists the middle of the sidebar shows. Remembered in this
+// browser across reloads, as a tab in a design tool's panel is; the page is
+// static files, so it is read once the page is on screen, never on the server.
+type Tab = "calls" | "transactions";
+const TAB_KEY = "simulator:sidebar-tab";
+const tabListeners = new Set<() => void>();
+let tabInMemory: Tab | undefined;
+const readTab = (): Tab => {
+  try {
+    return window.localStorage.getItem(TAB_KEY) === "transactions" ? "transactions" : "calls";
+  } catch {
+    return tabInMemory ?? "calls";
+  }
+};
+const chooseTab = (next: Tab) => {
+  tabInMemory = next;
+  try {
+    window.localStorage.setItem(TAB_KEY, next);
+  } catch {
+    // Remembered for the visit, then.
+  }
+  tabListeners.forEach((listener) => listener());
+};
+const subscribeTab = (onChange: () => void) => {
+  tabListeners.add(onChange);
+  return () => {
+    tabListeners.delete(onChange);
+  };
+};
+const useTab = (): Tab => useSyncExternalStore(subscribeTab, readTab, () => "calls");
 
 // How long an app gets to report before the sidebar says why it may not be.
 const PATIENCE_MS = 2500;
@@ -16,25 +47,28 @@ const PATIENCE_MS = 2500;
 /**
  * The column beside the phone, laid out as a design tool lays out its panels:
  * a title row per section, with its one action as an icon at the right, and
- * rows under it. At the top, the users the app can be shown to. Then every
- * call the open app makes to its host: one section per call the SDK offers,
- * always listed and under the SDK's name for it, with how many times it was
- * made; a section opens to its calls, and its header flashes each time one is
- * made: red when one fails, and it then says how many have. A call the SDK has
- * no function for gets a section when the app makes it. When the host would
- * ask the person something, the sheet appears under the call's row.
+ * rows under it. At the top, the users the app can be shown to. In the middle,
+ * one of two lists, under tabs: the SDK calls the open app makes to its host,
+ * or the local chain's transactions. Along the bottom, what the app runs in.
+ *
+ * SDK Calls: one section per call the SDK offers, always listed and under the
+ * SDK's name for it, with how many times it was made; a section opens to its
+ * calls, and its header flashes each time one is made: red when one fails,
+ * and it then says how many have. A call the SDK has no function for gets a
+ * section when the app makes it. When the host would ask the user something,
+ * the sheet appears under the call's row.
  */
 export function HostSidebar() {
   const url = useOpenApp();
 
   return (
-    <aside className="sidebar" aria-label="Host calls">
+    <aside className="sidebar" aria-label="Simulator">
       {url !== undefined && <Users />}
       {/* Empty until it is known whether an app is open: a note that an app replaces a moment later is a flicker. */}
       {url === undefined ? null : url ? (
-        <OpenAppCalls key={url} url={url} />
+        <Middle key={url} url={url} />
       ) : (
-        <SidebarNote title="Host calls">Open an app to see what it asks of its host.</SidebarNote>
+        <SidebarNote title="SDK Calls">Open an app to see what it asks of its host.</SidebarNote>
       )}
       {/* Along the bottom, whatever is above it: what the app runs in. */}
       {url !== undefined && <Runtime url={url} />}
@@ -42,7 +76,30 @@ export function HostSidebar() {
   );
 }
 
-function OpenAppCalls({ url }: { url: string }) {
+function Middle({ url }: { url: string }) {
+  const tab = useTab();
+  const manifest = useKnownManifest(url);
+  const name = manifest?.name ?? hostOf(url);
+  const choose = chooseTab;
+
+  return (
+    <section className="middle" aria-label={tab === "calls" ? "SDK Calls" : "Transactions"}>
+      <header className="section-header tabs-header">
+        <div className="tabs" role="tablist">
+          <button type="button" role="tab" className="tab" aria-selected={tab === "calls"} onClick={() => choose("calls")}>
+            SDK Calls
+          </button>
+          <button type="button" role="tab" className="tab" aria-selected={tab === "transactions"} onClick={() => choose("transactions")}>
+            Transactions
+          </button>
+        </div>
+      </header>
+      {tab === "calls" ? <OpenAppCalls url={url} name={name} /> : <TransactionList origin={new URL(url).origin} />}
+    </section>
+  );
+}
+
+function OpenAppCalls({ url, name }: { url: string; name: string }) {
   const connected = useHostConnected();
   const methods = useHostMethods();
   const manifest = useKnownManifest(url);
@@ -54,25 +111,14 @@ function OpenAppCalls({ url }: { url: string }) {
     return () => clearTimeout(timer);
   }, [url]);
 
-  const name = manifest?.name ?? hostOf(url);
-
   // An app with no Bankroll manifest has no host to call. If its page reports
   // calls all the same, it is listened to: what it says outranks what it lacks.
   if (!connected && manifest && !manifest.bankroll) {
-    return <SidebarNote title={name}>This isn&apos;t a Bankroll app, so it has no host to call.</SidebarNote>;
+    return <p className="sidebar-empty">{name} isn&apos;t a Bankroll app, so it has no host to call.</p>;
   }
 
   return (
     <>
-      <header className="section-header">
-        <div className="min-w-0">
-          <h2 className="sidebar-title">Host calls</h2>
-          <p className="sidebar-subtitle">{name}</p>
-        </div>
-        <IconButton label="Clear the calls" onClick={clearHostLog}>
-          <ClearIcon />
-        </IconButton>
-      </header>
       {!connected && waited && (
         <p className="sidebar-notice">
           {name} hasn&apos;t reported in. Its calls show here when it runs on an SDK with the simulator&apos;s bridge (0.33.0 or later), started by <code>bankroll dev --simulator</code>.
