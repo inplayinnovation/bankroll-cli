@@ -12,16 +12,21 @@
 //   /api/apps            the app this command is running, for the home screen.
 //   /api/versions        which CLI this is and which SDK the app has, and what
 //                        is worth saying of either (src/versions.ts).
+//   /api/host/...        the host: the pretend people, the treasury, and the
+//                        answers to the app's calls (src/host/routes.ts).
 //
 // It listens on this computer's loopback addresses and nowhere else: the
 // manifest path fetches whatever origin it is given, which is nothing to offer
-// a network.
+// a network, and the host makes payments, pretend or not, on a page's word.
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { Host } from './host/host';
+import { handleHostRequest, HOST_PATH } from './host/routes';
+import { manifestClaims } from './manifest';
 import { versionReport, type About } from './versions';
 
 /** Where the simulator is served, unless something else already has the port. */
@@ -75,15 +80,7 @@ export function appOrigin(input: string | null): string | null {
   return HOSTNAME.test(url.hostname) ? url.origin : null;
 }
 
-/** The claims of a manifest, which is a JWT: header.claims.signature. Null when it is not one. */
-export function manifestClaims(jwt: string): Record<string, unknown> | null {
-  try {
-    const claims: unknown = JSON.parse(Buffer.from(jwt.trim().split('.')[1] ?? '', 'base64url').toString('utf8'));
-    return typeof claims === 'object' && claims !== null && !Array.isArray(claims) ? (claims as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
+export { manifestClaims };
 
 const NOT_BANKROLL: AppManifest = { bankroll: false };
 
@@ -179,17 +176,23 @@ export interface SimulatorOptions {
   app: string;
   /** This CLI and the running app's folder, which /api/versions reads. Without it that path is not answered. */
   about?: About;
+  /** The host that answers the app's calls. Without it the /api/host paths are not answered. */
+  host?: Host;
   fetchImpl?: typeof fetch;
 }
 
 /** Answers one request: the /api paths, then the simulator's own files. */
 export function simulatorHandler(options: SimulatorOptions): (request: IncomingMessage, response: ServerResponse) => void {
   return (request, response) => {
+    const { pathname, searchParams } = new URL(request.url ?? '/', 'http://localhost');
+    if (options.host && (pathname === HOST_PATH || pathname.startsWith(`${HOST_PATH}/`))) {
+      void handleHostRequest(options.host, request, response, pathname);
+      return;
+    }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       response.writeHead(405, { allow: 'GET, HEAD' }).end();
       return;
     }
-    const { pathname, searchParams } = new URL(request.url ?? '/', 'http://localhost');
 
     if (pathname === '/api/apps') {
       sendJson(response, 200, { apps: [options.app] });
@@ -321,8 +324,8 @@ export interface Simulator {
  * server at that address, for someone working on the simulator itself: only
  * the /api paths are answered here, where that dev server sends them.
  */
-export async function serveSimulator(app: string, env: NodeJS.ProcessEnv = process.env, about?: About): Promise<Simulator> {
-  const told = about ? { about } : {};
+export async function serveSimulator(app: string, env: NodeJS.ProcessEnv = process.env, about?: About, host?: Host): Promise<Simulator> {
+  const told = { ...(about ? { about } : {}), ...(host ? { host } : {}) };
   const live = env.BANKROLL_SIMULATOR_URL?.replace(/\/+$/, '');
   if (live) {
     // That dev server sends /api to one address, so this port or none.

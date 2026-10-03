@@ -11,8 +11,10 @@
 // in-flight Wi-Fi).
 //
 // `--simulator` is the other way to look at the app: no phone and no tunnel,
-// the app in a phone frame in this computer's browser, as a pretend user
-// (src/simulator.ts).
+// the app in a phone frame in this computer's browser, shown to a pretend
+// person who pays in fake dollars on a local chain (src/simulator.ts,
+// src/host/). The dev signing key, which holds real money, stays out of it: the
+// app's treasury in the simulator is a key made up for the purpose.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -21,6 +23,10 @@ import { delimiter, join } from 'node:path';
 import { bin, install, Tunnel } from 'cloudflared';
 
 import { openBrowser } from './browser';
+import { CHAIN_PORT, type Chain, findSurfpool, freeChainPort, Ledger, startChain } from './host/chain';
+import { Host } from './host/host';
+import { People } from './host/people';
+import { loadTreasury } from './host/treasury';
 import { loadSigner } from './keypair';
 import { playUrl, resolveEnvironment } from './environments';
 import { launchPath, MANIFEST_PATH } from './manifest';
@@ -45,9 +51,11 @@ const TUNNEL_API_ORIGIN = 'https://api.trycloudflare.com';
 
 // The dev server reads this; it is never written to a file.
 const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
-// What makes the app's server accept the SDK's stand-in host, and its page
-// carry one: the pretend user the simulator shows the app to.
+// What makes the app's server accept a pretend person's session token.
 const MOCK_ENV = 'BANKROLL_MOCK';
+// Where the app's server reads payments from: the local chain, in the simulator.
+const RPC_ENV = 'SOLANA_RPC_URL';
+const SURFPOOL_INSTALL = 'curl -sL https://run.surfpool.run/ | bash';
 
 export interface DevOptions {
   // From `-e`: the play link opens the app in that environment's Bankroll.
@@ -135,14 +143,48 @@ async function serverReady(port: string): Promise<boolean> {
   return false;
 }
 
+/** What the simulator runs on: the app's made-up treasury, and the local chain, or why there is none. */
+interface Simulated {
+  treasury: { address: string; secretKey: string };
+  /** Where the chain will answer, known before it is up, or null when none starts. */
+  rpc: string | null;
+  chain: Promise<Chain | null>;
+  problem: string | null;
+}
+
+async function prepareSimulation(): Promise<Simulated> {
+  const treasury = loadTreasury();
+  const surfpool = findSurfpool();
+  if (!surfpool) {
+    const problem = `surfpool is not installed, so there is no local chain to pay on. Install it with \`${SURFPOOL_INSTALL}\` and start again.`;
+    return { treasury, rpc: null, chain: Promise.resolve(null), problem };
+  }
+  // The port is chosen now so the app's server can be told where the chain
+  // will be before the chain is up: it only asks once a payment is confirmed.
+  const port = await freeChainPort(CHAIN_PORT);
+  const chain = startChain({ surfpool, port }).catch((error: unknown) => {
+    console.warn(`\n  The local chain did not start: ${error instanceof Error ? error.message : String(error)}\n`);
+    return null;
+  });
+  return { treasury, rpc: `http://127.0.0.1:${port}`, chain, problem: null };
+}
+
 /**
  * The simulator's half of `dev`: the page that shows the app, served from this
- * computer and opened in the browser, on the app's launch path.
+ * computer and opened in the browser, on the app's launch path, with the host
+ * that answers the app behind it.
  *
  * There is no tunnel to wait for here, so the dev server may not be up yet:
  * the browser is opened once it answers, not on a page that refuses to load.
  */
-async function simulate(port: string, child: ChildProcess, notice: Promise<string | null>, open: boolean, version: string): Promise<void> {
+async function simulate(
+  port: string,
+  child: ChildProcess,
+  notice: Promise<string | null>,
+  open: boolean,
+  version: string,
+  simulated: Simulated,
+): Promise<void> {
   let stop = () => {};
   const shutdown = () => {
     stop();
@@ -156,21 +198,42 @@ async function simulate(port: string, child: ChildProcess, notice: Promise<strin
     process.exit(code ?? 0);
   });
 
+  const chain = await simulated.chain;
+  const people = new People();
+  const host = new Host({
+    people,
+    treasury: simulated.treasury,
+    ledger: chain ? new Ledger(chain.rpc) : null,
+    ...(simulated.problem ? { chainProblem: simulated.problem } : chain ? {} : { chainProblem: 'the local chain did not start, so payments are refused' }),
+  });
+  try {
+    await host.start();
+  } catch (error) {
+    console.warn(`\n  The local chain could not be set up: ${error instanceof Error ? error.message : String(error)}\n`);
+  }
+
   if (!(await serverReady(port))) {
     console.warn(`\n  The dev server has not answered on port ${port}, so the simulator was not opened.\n`);
     return;
   }
   // This command runs in the app's folder: the simulator's sidebar says what is installed there.
   const about = { cli: version, dir: process.cwd() };
-  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(`http://localhost:${port}`)}`, process.env, about).catch((error: unknown) => {
+  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(`http://localhost:${port}`)}`, process.env, about, host).catch((error: unknown) => {
     // No simulator is a failure of the whole command: the dev server goes with it.
     child.kill();
     throw error;
   });
-  stop = simulator.stop;
+  stop = () => {
+    simulator.stop();
+    chain?.stop();
+  };
 
   const update = await notice;
-  console.log(`\n  Your app is open in the simulator, as a pretend user: no money moves.\n  ${simulator.url}\n`);
+  const person = people.current();
+  console.log(`\n  Your app is open in the simulator, shown to ${person.username}, a pretend person.`);
+  if (chain) console.log(`  Payments settle in fake dollars on a local chain at ${chain.rpc}; nothing is real.`);
+  else console.log(`  ${simulated.problem ?? 'The local chain did not start, so payments are refused.'}`);
+  console.log(`  ${simulator.url}\n`);
   if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
   if (open) openBrowser(simulator.url);
 }
@@ -178,11 +241,14 @@ async function simulate(port: string, child: ChildProcess, notice: Promise<strin
 export async function dev(options: DevOptions, version: string): Promise<void> {
   // An explicit choice wins; otherwise take whatever is free.
   const port = options.port ?? process.env.PORT ?? String(await freePort());
-  const signer = loadSigner(options.keypair);
+  // In the simulator the app's treasury is a key made up for it: the signing
+  // key holds real money and is not touched.
+  const simulated = options.simulator ? await prepareSimulation() : null;
+  const signer = simulated ? null : loadSigner(options.keypair);
   // Asked now, said at the end, beside the link.
   const notice = updateNotice(version);
 
-  if (signer.created) {
+  if (signer?.created) {
     console.log(`
   Created a signing key
 
@@ -210,15 +276,16 @@ export async function dev(options: DevOptions, version: string): Promise<void> {
       PATH: `${join(process.cwd(), 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
       // Injected into this process only. The secret never reaches .env.local,
       // so it cannot be committed and does not survive the session.
-      [TREASURY_KEY_ENV]: signer.secretKey,
-      // The simulator has no host but the stand-in. Set here and not left to
-      // the app's .env files, which an older app does not have.
-      ...(options.simulator ? { [MOCK_ENV]: '1' } : {}),
+      [TREASURY_KEY_ENV]: simulated ? simulated.treasury.secretKey : signer!.secretKey,
+      // A pretend person's session token is accepted, and payments are read
+      // from the local chain. Set here and not left to the app's .env files,
+      // which an older app does not have.
+      ...(simulated ? { [MOCK_ENV]: '1', ...(simulated.rpc ? { [RPC_ENV]: simulated.rpc } : {}) } : {}),
     },
   });
 
-  if (options.simulator) {
-    await simulate(port, child, notice, options.open !== false, version);
+  if (simulated) {
+    await simulate(port, child, notice, options.open !== false, version, simulated);
     return;
   }
 

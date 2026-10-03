@@ -1,6 +1,17 @@
-// The manifest a Bankroll app serves, read for where the app boots.
+// The manifest a Bankroll app serves: where the app boots, and what it says
+// about itself.
 export const MANIFEST_PATH = '/.well-known/bankroll.jwt';
 const MANIFEST_TIMEOUT_MS = 5_000;
+
+/** The claims of a manifest, which is a JWT: header.claims.signature. Null when it is not one. */
+export function manifestClaims(jwt: string): Record<string, unknown> | null {
+  try {
+    const claims: unknown = JSON.parse(Buffer.from(jwt.trim().split('.')[1] ?? '', 'base64url').toString('utf8'));
+    return typeof claims === 'object' && claims !== null && !Array.isArray(claims) ? (claims as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The app's `launch` path, from the manifest served at `base`. Falls back to

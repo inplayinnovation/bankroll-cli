@@ -8,7 +8,7 @@ bankroll login                           # your Bankroll account
 bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
 cd free-throw-duel && npm install        # what create prints
 npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
-npm run dev -- --simulator               # or the app in a phone on this computer, as a pretend user
+npm run dev -- --simulator               # or the app in a phone on this computer, shown to a pretend person
 git push bankroll main                   # Bankroll builds the test version
 bankroll wait test                       # the build, then the test address and a QR; it takes test cash
 git push bankroll main:live              # publishes it: everyone gets it, paid in real money
@@ -89,19 +89,46 @@ app makes to its host, each with what went in and what came back.
 npm run dev -- --simulator
 ```
 
-The app runs as a pretend user. `dev` sets `BANKROLL_MOCK=1` for it, so the
-SDK's stand-in host answers in place of Bankroll: sessions and charges work, and
-no money moves. That is the difference from the phone, where the session and
-the money are real. The simulator shows the app's calls from
-`@joinbankroll/sdk` 0.33.0 on; on an older SDK the app still runs and the list
-stays empty.
+The app is shown to a pretend person, and pays in fake dollars on a chain of
+its own. At the top of the sidebar is who that person is: a menu of the people
+on this computer, and a way to make another, with a username, an age or none
+(an account that has not verified), and a balance. Switching starts the app
+over as the next person. The people live in `~/.config/bankroll/simulator/`,
+each with a wallet made up for them, never in your project.
+
+The simulator is the app's host, as the Bankroll app is on a phone: it answers
+every call the app makes, and where the phone would stop and ask its user, a
+sheet appears under the call's row for you to answer: consent the first time an
+app asks who the person is, approval of each payment with the time the app
+allowed, identity verification for a person who has none, and a deposit, which
+adds fake dollars. A refusal reaches the app with the phone's words for it, so
+`consent_declined`, `payment_denied` and the rest can be tried.
+
+The money is real to a chain. `dev` starts [surfpool](https://surfpool.run), a
+local Solana network, fresh each time, if it is installed (`curl -sL
+https://run.surfpool.run/ | bash`), and points the app's server at it. The
+Bankroll dollar exists there at its real address, people hold what you gave
+them, and a payment is a transfer the app's server confirms with the SDK's real
+code: payee, token, amount and memo are checked as they are in production, and
+a charge is found by its reference. Nothing made here is valid anywhere else.
+Without surfpool the app still runs and people still have sessions and
+balances; payments are refused, with the reason.
+
+The app's treasury here is a key made up for the simulator, shown at the bottom
+of the sidebar with what it holds. Your dev signing key, which holds real money,
+is never used in the simulator. An app whose manifest names a treasury of its
+own is paid there instead, and the line says so.
+
+`dev` sets `BANKROLL_MOCK=1` for the app, so the SDK's server half accepts a
+pretend person's session token, and `SOLANA_RPC_URL` for the local chain. The
+simulator talks to the app through `@joinbankroll/sdk` 0.33.0 or later; on an
+older SDK the app still runs, with no host.
 
 The app fills the phone's screen, as it does in Bankroll, and the status bar and
 the home indicator are drawn over it. A phone tells a page how much room those
 take through `env(safe-area-inset-*)`; a browser on a computer says zero. So
-the simulator tells the stand-in host, which sets
-`--bankroll-safe-area-inset-top`, `-right`, `-bottom` and `-left` on the page
-(`@joinbankroll/sdk` 0.33.0 on). An app whose CSS reads
+the simulator tells the SDK, which sets `--bankroll-safe-area-inset-top`,
+`-right`, `-bottom` and `-left` on the page. An app whose CSS reads
 `var(--bankroll-safe-area-inset-top, env(safe-area-inset-top))`, as the
 starter's shell does, keeps clear of both here as it does on a phone. One
 difference stays: Bankroll draws a bar of its own under an app, and the

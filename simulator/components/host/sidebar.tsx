@@ -5,24 +5,28 @@ import { hostOf } from "@/lib/apps";
 import { clearHostLog, useCallSection, useHostConnected, useHostMethods, type CallEntry } from "@/lib/host-log";
 import { askManifest, useKnownManifest } from "@/lib/manifests";
 import { useOpenApp } from "@/lib/open-app";
+import { PersonPicker } from "./person";
 import { Runtime } from "./runtime";
+import { SheetList } from "./sheet";
 
 // How long an app gets to report before the sidebar says why it may not be.
 const PATIENCE_MS = 2500;
 
 /**
- * The column beside the phone: every call the open app makes to its host. One
- * section per call the SDK offers, always listed and under the SDK's name for
- * it, with how many times it was made; a section opens to its calls, and its
- * header flashes each time one is made: red when one fails, and it then says
- * how many have. A call the SDK has no function for gets a section when the
- * app makes it.
+ * The column beside the phone. At the top, who the app is shown to. Then every
+ * call the open app makes to its host: one section per call the SDK offers,
+ * always listed and under the SDK's name for it, with how many times it was
+ * made; a section opens to its calls, and its header flashes each time one is
+ * made: red when one fails, and it then says how many have. A call the SDK has
+ * no function for gets a section when the app makes it. When the host would
+ * ask the person something, the sheet appears under the call's row.
  */
 export function HostSidebar() {
   const url = useOpenApp();
 
   return (
     <aside className="sidebar" aria-label="Host calls">
+      {url !== undefined && <PersonPicker />}
       {/* Empty until it is known whether an app is open: a note that an app replaces a moment later is a flicker. */}
       {url === undefined ? null : url ? (
         <OpenAppCalls key={url} url={url} />
@@ -68,7 +72,7 @@ function OpenAppCalls({ url }: { url: string }) {
       </header>
       {!connected && waited && (
         <p className="sidebar-notice">
-          {name} hasn&apos;t reported in. Its calls show here when it runs with <code>BANKROLL_MOCK=1</code> on an SDK that reports to the simulator.
+          {name} hasn&apos;t reported in. Its calls show here when it runs on an SDK with the simulator&apos;s bridge (0.33.0 or later), started by <code>bankroll dev --simulator</code>.
         </p>
       )}
       <ul className="sidebar-list">
@@ -121,6 +125,7 @@ const CallSectionRow = memo(function CallSectionRow({ method }: { method: string
           {count}
         </span>
       </button>
+      <SheetList method={method} />
       {open && (
         <ol className="call-entries">
           {entries.length === 0 && <li className="call-none">Not called yet.</li>}

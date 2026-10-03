@@ -58,6 +58,12 @@ function toSigner(secret: Uint8Array, path: string, created: boolean): Signer {
   };
 }
 
+/** A new keypair, as the two base58 strings everything here passes around. */
+export function newKeypair(): { address: string; secretKey: string } {
+  const secret = generate();
+  return { address: bs58.encode(secret.subarray(KEY_BYTES)), secretKey: bs58.encode(secret) };
+}
+
 function generate(): Uint8Array {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const address = publicKey.export({ format: 'der', type: 'spki' }).subarray(-KEY_BYTES);

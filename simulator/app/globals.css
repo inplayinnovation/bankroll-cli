@@ -679,6 +679,130 @@ body {
   font-size: 12px;
 }
 
+/* --- Person: who the app is shown to ----------------------------------- */
+
+.person {
+  flex: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.person-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 12px 6px 16px;
+}
+
+/* The top bar's menu, in the sidebar's size; the person's name is cut before the menu is. */
+.person-select {
+  min-width: 0;
+  max-width: 240px;
+  height: 24px;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+}
+
+.person-waiting {
+  color: var(--quiet);
+}
+
+.person-form {
+  display: grid;
+  gap: 8px;
+  padding: 2px 16px 12px;
+}
+
+.person-field,
+.sheet-card-field {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 8px;
+  color: var(--quiet);
+}
+
+.person-input {
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  outline: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+.person-input:focus-visible {
+  box-shadow: 0 0 0 2px #0a84ff;
+}
+
+.person-problem {
+  color: var(--failed);
+  line-height: 1.4;
+}
+
+.person-actions,
+.sheet-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sidebar-button-primary {
+  color: #fff;
+  background: #0a84ff;
+}
+
+.sidebar-button-primary:hover {
+  background: color-mix(in srgb, #0a84ff 85%, var(--foreground));
+}
+
+.sidebar-button:disabled {
+  opacity: 0.5;
+}
+
+/* --- Sheets: what the phone would ask its user, under the call's row ------- */
+
+.sheets {
+  display: grid;
+  gap: 8px;
+  padding: 2px 14px 10px 36px;
+}
+
+.sheet-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--foreground) 16%, transparent);
+  animation: app-open 160ms ease-out;
+}
+
+.sheet-card-title {
+  font-weight: 600;
+}
+
+.sheet-card-detail {
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+/* --- Treasury: the app's wallet in the simulator --------------------------- */
+
+.treasury-line .runtime-name {
+  width: auto;
+}
+
+.treasury-balance {
+  margin-left: auto;
+}
+
 .sidebar-list {
   flex: 1;
   min-height: 0;

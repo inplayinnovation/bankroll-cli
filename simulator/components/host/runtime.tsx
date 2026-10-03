@@ -3,12 +3,13 @@
 import { useId, type ReactNode } from "react";
 import { useReportedSdk } from "@/lib/host-log";
 import { useVersionReport, type PackageReport, type SdkReport } from "@/lib/versions";
+import { TreasuryLine } from "./treasury";
 
 /**
- * The bottom of the sidebar: what the app runs in. A lock and "Secure
- * Runtime", then a line each for the SDK the open app runs and the CLI that
- * serves the simulator, with a word beside a version when there is something
- * to say of it:
+ * The bottom of the sidebar: what the app runs in. The app's treasury in the
+ * simulator, a lock and "Secure Runtime", then a line each for the SDK the
+ * open app runs and the CLI that serves the simulator, with a word beside a
+ * version when there is something to say of it:
  *
  *   local    a build of someone's own, not a published release
  *   update   a later release is out
@@ -25,6 +26,7 @@ export function Runtime({ url }: { url: string | null }) {
 
   return (
     <footer className="runtime" aria-label="Runtime">
+      <TreasuryLine origin={url ? new URL(url).origin : null} />
       <Line
         className="runtime-secure"
         tip={
@@ -58,7 +60,7 @@ export function Runtime({ url }: { url: string | null }) {
 }
 
 /** One line, and the popup that says more of it while the pointer rests there, or focus does. */
-function Line({ className, tip, children }: { className?: string; tip: ReactNode; children: ReactNode }) {
+export function Line({ className, tip, children }: { className?: string; tip: ReactNode; children: ReactNode }) {
   const id = useId();
   return (
     <div className={className ? `runtime-line ${className}` : "runtime-line"} tabIndex={0} aria-describedby={id}>

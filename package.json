@@ -23,6 +23,8 @@
     "cli"
   ],
   "dependencies": {
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.98.4",
     "bs58": "6.0.0",
     "cloudflared": "^0.7.1",
     "commander": "^13.0.0",
