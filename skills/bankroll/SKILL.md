@@ -76,15 +76,17 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
    its own page, so `http://localhost:3000/app` runs in any browser as the
    pretend user (an app from before 2026-09-26 lacks this and shows "Open this
    in Bankroll" in a browser; use `npm run check` there). When the user wants
-   to look at the app themselves, `npm run dev -- --simulator` opens it in a
-   phone frame in their browser, as the pretend user, with every call the app
-   makes to its host listed beside it. It keeps running: start it as a
-   background task, and add `--no-open` when nobody is at the screen.
-6. On a phone: `npm run dev` runs the dev server behind a public tunnel and
-   prints a QR that opens the app inside Bankroll, with real sessions and real
-   charges paid to a dev signing key at `~/.config/bankroll/keypair.json`.
-   Leave `BANKROLL_MOCK` out of `.env.local` for that loop. The tunnel URL
-   changes on every restart: "Can't open this app" means a dead tunnel.
+   to look at the app themselves, `npm run dev` opens it in the simulator: a
+   phone frame in their browser, shown to a pretend user who pays fake dollars
+   on a local chain, with every call the app makes to its host and every
+   transaction listed beside it. It keeps running: start it as a background
+   task, and add `--no-open` when nobody is at the screen.
+6. On a phone: `npm run dev -- --phone` runs the dev server behind a public
+   tunnel and prints a QR that opens the app inside Bankroll, with real
+   sessions and real charges paid to a dev signing key at
+   `~/.config/bankroll/keypair.json`. Leave `BANKROLL_MOCK` out of `.env.local`
+   for that loop. The tunnel URL changes on every restart: "Can't open this
+   app" means a dead tunnel.
 7. Before a push: `npm run typecheck && npm run lint && npm run build`. A build
    that fails is not deployed.
 
@@ -115,7 +117,7 @@ secret, and the restrictions are settings Bankroll puts on the deployment.
 
 ## The QR, when you run the phone loop
 
-Run `npm run dev` as a background task and leave it running. Its output is
+Run `npm run dev -- --phone` as a background task and leave it running. Its output is
 never shown to the user. Put the QR **in your chat reply** as plain monospace
 glyphs in a fenced code block with the play link under it; when stdout is not a
 TTY the CLI prints exactly that, so re-print it verbatim. Never send the QR as
@@ -162,7 +164,7 @@ an image or attachment; neither renders in a terminal chat.
 | `bankroll wait test` says `failed:` | The build failed: describe, classify, sign, or deploy | It prints the reason; fix and push again |
 | `bankroll wait test` says the SDK is too old | A test build needs `@joinbankroll/sdk` 0.32.0 or later in the lockfile | `npm install @joinbankroll/sdk@latest`, commit, push again |
 | "Could not set up the app" from `apps create` | Provisioning failed on Bankroll's side | Try once more; if it repeats, tell the user |
-| "Can't open this app" on the phone | The tunnel died on restart | Restart `npm run dev`, scan the new QR |
+| "Can't open this app" on the phone | The tunnel died on restart | Restart `npm run dev -- --phone`, scan the new QR |
 | `update_required` | The Bankroll app is too old | Ask the user to update the app |
 | 401 from API routes in a browser | No host outside Bankroll | Expected; use `npm run check` or the phone |
 | `manifest_error` | The manifest is missing or malformed | `curl <address>/.well-known/bankroll.jwt`; check `sub` equals the exact origin |

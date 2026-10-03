@@ -1,5 +1,5 @@
-// `bankroll dev --simulator` — the app in a phone on this computer's screen,
-// in place of a phone.
+// `bankroll dev` — the app in a phone on this computer's screen, in place of
+// a phone.
 //
 // The simulator is a page: an iPhone frame around the app, and beside it every
 // call the app makes to its host. It is built from simulator/ into

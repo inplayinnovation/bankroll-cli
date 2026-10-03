@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { graphql } from './api';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
-import { cloneRepo, declareName, DECLARATION_FILE, directoryFor } from './repo';
+import { cloneRepo, declareName, DECLARATION_FILE, directoryFor, installDependencies } from './repo';
 import { sessionLocation } from './session';
 import { SKILL_HINT } from './skill';
 
@@ -130,6 +130,8 @@ export async function list(options: AccountOptions & ListOptions): Promise<void>
 export interface CreateOptions {
   /** Leave the repo on Bankroll: for a script, or a phone-first app. */
   noClone?: boolean;
+  /** Clone, but leave `npm install` to the caller. */
+  noInstall?: boolean;
 }
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -147,8 +149,9 @@ function declared(target: string, name: string): string {
 
 /**
  * An app with the starter's files and no agent run. The repo is the only
- * reason to make one from a computer, so it is cloned here unless the caller
- * says otherwise; the app exists either way, and `apps clone` can run later.
+ * reason to make one from a computer, so it is cloned here and its
+ * dependencies installed, unless the caller says otherwise; the app exists
+ * either way, and `apps clone` can run later.
  *
  * The api takes no name: an app declares its own in `bankroll-app.json`, and
  * has it once a push is built. A name given here is the same declaration,
@@ -182,7 +185,18 @@ export async function create(given: string | undefined, options: AccountOptions 
   });
   if (!clone) return;
   if (name !== undefined) console.log(`  ${declared(clone.target, name)}`);
-  console.log(`  cd ${clone.name} && npm install\n`);
+  if (options.noInstall) {
+    console.log(`  cd ${clone.name} && npm install && npm run dev\n`);
+    return;
+  }
+  try {
+    installDependencies(clone.target);
+  } catch (error) {
+    console.log(`\n  The app is here, but its dependencies are not: ${reason(error)}`);
+    console.log(`  cd ${clone.name} && npm install && npm run dev\n`);
+    return;
+  }
+  console.log(`\n  Ready. \`cd ${clone.name} && npm run dev\` opens it in the simulator.\n`);
 }
 
 export async function archive(id: string, options: AccountOptions): Promise<void> {

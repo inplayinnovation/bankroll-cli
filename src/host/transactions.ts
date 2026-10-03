@@ -263,7 +263,7 @@ export class Watcher {
   private connect(): void {
     if (this.stopped) return;
     if (typeof WebSocket === 'undefined') {
-      this.options.log?.('this Node has no WebSocket, so the chain is not watched; Node 22 or later does.');
+      this.options.log?.('this Node has no WebSocket, so the chain is not watched. The CLI needs Node 22 or later.');
       return;
     }
     const url = this.options.ws ?? wsOf(this.options.rpc);

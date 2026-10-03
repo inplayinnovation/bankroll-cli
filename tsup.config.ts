@@ -13,7 +13,7 @@ export default defineConfig({
   // dist also holds the built simulator, which this must not remove on every
   // rebuild in watch mode. scripts/build.mjs empties dist before a full build.
   clean: false,
-  target: 'node20',
+  target: 'node22',
   define: { __VERSION__: JSON.stringify(version) },
   // A CLI is executed, not imported, so one file beats a dozen chunks.
   banner: { js: '#!/usr/bin/env node' },

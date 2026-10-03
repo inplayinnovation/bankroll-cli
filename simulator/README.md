@@ -3,7 +3,7 @@
 A phone on your desk for a Bankroll app: the app in an iPhone frame, and beside
 it every call the app makes to its host.
 
-`bankroll dev --simulator` opens it. It ships inside `@joinbankroll/cli` as
+`bankroll dev` opens it. It ships inside `@joinbankroll/cli` as
 static files: `npm run build` in the repo root builds it into `dist/simulator`,
 and the CLI serves it from there (`src/simulator.ts`).
 
@@ -42,7 +42,7 @@ and the CLI serves it from there (`src/simulator.ts`).
   a window message (`lib/host-log.ts`, and `SimulatorMessage` in
   `@joinbankroll/sdk/mock`). This page relays it to the CLI on its own origin
   (`lib/host.ts`, `/api/host/call`) and sends the answer back. That needs
-  `@joinbankroll/sdk` 0.33.0 in the app, started by `bankroll dev --simulator`.
+  `@joinbankroll/sdk` 0.33.0 in the app, started by `bankroll dev`.
 - **The sheets** (`components/host/sheet.tsx`): where the phone would stop and
   ask its user, the CLI answers with a sheet instead of a result, and it is
   drawn under the call's row: consent, a payment with its countdown, identity

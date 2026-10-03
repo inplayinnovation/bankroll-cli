@@ -3,12 +3,11 @@
 Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps.
 
 ```bash
-npm i -g @joinbankroll/cli               # once per computer
+npm i -g @joinbankroll/cli               # once per computer; Node 22 or later
 bankroll login                           # your Bankroll account
-bankroll apps create "Free Throw Duel"   # the app, named, and its repo here
-cd free-throw-duel && npm install        # what create prints
-npm run dev                              # tunnel + QR — scan it to open the app inside Bankroll
-npm run dev -- --simulator               # or the app in a phone on this computer, shown to a pretend user
+bankroll apps create "Free Throw Duel"   # the app, its repo here, dependencies installed
+cd free-throw-duel && npm run dev        # the app in a phone on this computer, shown to a pretend user
+npm run dev -- --phone                   # or on your phone: tunnel + QR, scan it to open the app inside Bankroll
 git push bankroll main                   # Bankroll builds the test version
 bankroll wait test                       # the build, then the test address and a QR; it takes test cash
 git push bankroll main:live              # publishes it: everyone gets it, paid in real money
@@ -27,7 +26,7 @@ bankroll logout                                 forget the login on this compute
 bankroll whoami                                 who this computer is logged in as
 bankroll apps                                   your apps, with the commit each version serves
 bankroll apps --archived                        only archived; --all for everything
-bankroll apps create [name]                     a new app, cloned here; --no-clone leaves it
+bankroll apps create [name]                     a new app, cloned here and installed; --no-clone, --no-install
 bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
@@ -36,8 +35,8 @@ bankroll wait test                              the build a push to main started
 bankroll wait live                              the build a push to live started, then the live address
 bankroll faucet                                 test cash for your account
 
-bankroll dev                                    tunnel + QR, injects your key
-bankroll dev --simulator                        the app in a phone on this computer, no tunnel
+bankroll dev                                    the app in a phone on this computer: the simulator
+bankroll dev --phone                            on your phone instead: tunnel + QR, injects your key
 ```
 
 ### Test, then live
@@ -58,9 +57,10 @@ cash; the test version's menu in the app has the same button.
 `bankroll apps` lists the commit each version serves, whole. What is tested
 but not live is a git question: `git log bankroll/live..bankroll/main`.
 
-### `bankroll dev`
+### `bankroll dev --phone`
 
-Runs your dev server behind a Cloudflare quick tunnel and prints a QR code.
+Runs your dev server behind a Cloudflare quick tunnel and prints a QR code,
+for the app on a phone running Bankroll, with real sessions and real money.
 
 A Bankroll app only runs inside the Bankroll host, and the host refuses any
 origin that is not public HTTPS — so localhost cannot be opened however
@@ -79,16 +79,18 @@ re-print into a chat transcript, where ANSI would be stripped and the colored
 form would collapse into a wall of `▀`. Setting `NO_COLOR` forces the bare form
 on a TTY too. The full play link is printed under the QR either way.
 
-### `bankroll dev --simulator`
+### `bankroll dev`
 
-The other way to look at your app: no phone and no tunnel. Your browser opens a
-page with the app in an iPhone frame, and beside it the users the app can be
-shown to, every call the app makes to its host, and the local chain's
-transactions.
+The default: no phone and no tunnel. Your browser opens a page with the app in
+an iPhone frame, and beside it the users the app can be shown to, every call
+the app makes to its host, and the local chain's transactions.
 
 ```bash
-npm run dev -- --simulator
+npm run dev
 ```
+
+(`--simulator`, the flag this had while the phone was the default, is still
+taken and means the same.)
 
 The app is shown to a pretend user, and pays in fake dollars on a chain of its
 own. At the top of the sidebar are the users on this computer, one row each,
@@ -135,7 +137,7 @@ own is paid there instead, and the line says so.
 `dev` sets `BANKROLL_MOCK=1` for the app, so the SDK's server half accepts a
 pretend user's session token, and `SOLANA_RPC_URL` for the local chain. The
 simulator talks to the app through `@joinbankroll/sdk` 0.33.0 or later; on an
-older SDK the app still runs, with no host.
+older SDK the app still runs, with no host. The CLI needs Node 22 or later.
 
 The app fills the phone's screen, as it does in Bankroll, and the status bar and
 the home indicator are drawn over it. A phone tells a page how much room those
@@ -177,7 +179,7 @@ many machines, a developer's actual wallet. This tool puts the key it loads into
 a dev server's environment, so it gets its own: the blast radius is bounded, and
 deleting one file is a complete cleanup.
 
-The secret is injected into the process `bankroll dev` spawns and is never
+The secret is injected into the process `bankroll dev --phone` spawns and is never
 written into your project, so it cannot be committed.
 
 A deployment should use a *different* `BANKROLL_TREASURY_KEY`, set as a
@@ -257,7 +259,7 @@ together.
 
 `npm run dogfood -- ../my-app` is for working on the CLI, the SDK, the
 simulator and an app at once. It runs the app through this repo's
-`bankroll dev --simulator`, and keeps four things current on every save: the
+`bankroll dev`, and keeps four things current on every save: the
 SDK (rebuilt, and copied into the app's `node_modules`), the CLI (rebuilt, and
 the app restarted with it), the simulator (its own dev server, hot reloading),
 and the app. It looks for the SDK in `../bankroll-sdk`; `BANKROLL_SDK` names

@@ -121,7 +121,7 @@ function OpenAppCalls({ url, name }: { url: string; name: string }) {
     <>
       {!connected && waited && (
         <p className="sidebar-notice">
-          {name} hasn&apos;t reported in. Its calls show here when it runs on an SDK with the simulator&apos;s bridge (0.33.0 or later), started by <code>bankroll dev --simulator</code>.
+          {name} hasn&apos;t reported in. Its calls show here when it runs on an SDK with the simulator&apos;s bridge (0.33.0 or later), started by <code>bankroll dev</code>.
         </p>
       )}
       <ul className="sidebar-list">

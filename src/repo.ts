@@ -113,6 +113,26 @@ export async function clone(appId: string, directory: string | undefined, option
  * `apps create` calls this too, which is why the closing advice is the
  * caller's and not this function's.
  */
+/** What runs a command in a directory and reports how it went: spawnSync, or a test's stand-in. */
+export type Runner = (command: string, args: string[], options: { cwd: string }) => { error?: Error; status: number | null };
+
+const npmRunner: Runner = (command, args, { cwd }) => {
+  const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+  return { ...(result.error ? { error: result.error } : {}), status: result.status };
+};
+
+/**
+ * `npm install` in a fresh clone, with npm's own output showing, so a new app
+ * is ready to run the moment `create` is done. Throws with the command to run
+ * by hand when it fails: the clone is there either way.
+ */
+export function installDependencies(target: string, run: Runner = npmRunner): void {
+  console.log(`\n  Installing dependencies in ${basename(target)}...\n`);
+  const result = run('npm', ['install'], { cwd: target });
+  if (result.error) throw new Error(`npm could not be run: ${result.error.message}`);
+  if (result.status !== 0) throw new Error(`npm install exited with ${result.status}`);
+}
+
 export async function cloneRepo(
   appId: string,
   directory: string | undefined,

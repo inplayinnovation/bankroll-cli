@@ -3,18 +3,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import {
-  cloneArgs,
-  credentialReply,
-  declareName,
-  directoryFor,
-  helperCommand,
-  nameCommitArgs,
-  repoUrl,
-  withName,
-} from '../src/repo';
+import { cloneArgs, credentialReply, declareName, directoryFor, helperCommand, installDependencies, nameCommitArgs, repoUrl, withName } from '../src/repo';
 
 const git = (directory: string, ...args: string[]) =>
   execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8' }).trim();
@@ -137,5 +128,27 @@ describe('declareName', () => {
     expect(declareName(clone, 'Free Throw Duel')).toBe(true);
     expect(git(clone, 'show', '--name-only', '--format=', 'HEAD')).toBe('bankroll-app.json');
     expect(git(clone, 'status', '--porcelain')).toBe('M  README.md');
+  });
+});
+
+describe('installDependencies', () => {
+  it('runs npm install in the clone, with its output showing, and says so', () => {
+    const runs: { command: string; args: string[]; cwd: string }[] = [];
+    const said: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line: string) => void said.push(line));
+    installDependencies('/tmp/free-throw-duel', (command, args, { cwd }) => {
+      runs.push({ command, args, cwd });
+      return { status: 0 };
+    });
+    log.mockRestore();
+    expect(runs).toEqual([{ command: 'npm', args: ['install'], cwd: '/tmp/free-throw-duel' }]);
+    expect(said.join('\n')).toContain('Installing dependencies in free-throw-duel');
+  });
+
+  it('throws with what went wrong, so create can print the command to run by hand', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    expect(() => installDependencies('/tmp/app', () => ({ status: 1 }))).toThrow('npm install exited with 1');
+    expect(() => installDependencies('/tmp/app', () => ({ error: new Error('ENOENT'), status: null }))).toThrow('npm could not be run: ENOENT');
+    log.mockRestore();
   });
 });

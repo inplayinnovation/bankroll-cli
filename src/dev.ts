@@ -1,20 +1,20 @@
-// `bankroll dev` — your dev server, plus a way onto a phone.
+// `bankroll dev` — your dev server, and the app in the simulator: a phone
+// frame in this computer's browser, shown to a pretend user who pays in fake
+// dollars on a local chain (src/simulator.ts, src/host/). The dev signing key,
+// which holds real money, stays out of it: the app's treasury in the simulator
+// is a key made up for the purpose.
 //
+// `--phone` is the other way to look at the app, on a phone running Bankroll.
 // A Built for Bankroll app only ever runs inside Bankroll, and Bankroll refuses
 // any origin that is not public HTTPS — so localhost cannot be opened however
 // reachable it is. A Cloudflare quick tunnel comes up alongside the dev server,
-// and the QR opens the app through it.
+// and the QR opens the app through it, with real sessions and real money, paid
+// to the dev signing key.
 //
 // Quick tunnels need no Cloudflare account, and because the phone reaches the
 // app over the public internet rather than the local network, this also works
 // on networks that isolate clients from each other (most hotel, venue, and
 // in-flight Wi-Fi).
-//
-// `--simulator` is the other way to look at the app: no phone and no tunnel,
-// the app in a phone frame in this computer's browser, shown to a pretend
-// person who pays in fake dollars on a local chain (src/simulator.ts,
-// src/host/). The dev signing key, which holds real money, stays out of it: the
-// app's treasury in the simulator is a key made up for the purpose.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -62,7 +62,9 @@ export interface DevOptions {
   env?: string;
   port?: string;
   keypair?: string;
-  /** The app in the simulator on this computer, in place of the tunnel and the QR. */
+  /** The app on a phone, through a tunnel and a QR, in place of the simulator. */
+  phone?: boolean;
+  /** The old flag for the default; taken and ignored. */
   simulator?: boolean;
   /** False to print the simulator's link and leave the browser alone, for a shell with nobody at it. */
   open?: boolean;
@@ -244,7 +246,7 @@ export async function dev(options: DevOptions, version: string): Promise<void> {
   const port = options.port ?? process.env.PORT ?? String(await freePort());
   // In the simulator the app's treasury is a key made up for it: the signing
   // key holds real money and is not touched.
-  const simulated = options.simulator ? await prepareSimulation() : null;
+  const simulated = options.phone ? null : await prepareSimulation();
   const signer = simulated ? null : loadSigner(options.keypair);
   // Asked now, said at the end, beside the link.
   const notice = updateNotice(version);

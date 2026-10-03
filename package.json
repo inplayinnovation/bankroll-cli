@@ -16,7 +16,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=20.6"
+    "node": ">=22"
   },
   "keywords": [
     "bankroll",

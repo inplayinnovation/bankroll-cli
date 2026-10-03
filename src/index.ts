@@ -4,7 +4,7 @@
 // machine, and it never leaves it. `login` is separate: it keeps a Bankroll
 // account session on this machine for the commands that act on your account
 // and your apps.
-import { Argument, Command } from 'commander';
+import { Argument, Command, Option } from 'commander';
 
 // Replaced at build time with this package's version — see tsup.config.ts.
 declare const __VERSION__: string;
@@ -37,11 +37,13 @@ program
 
 program
   .command('dev')
-  .description('Run the dev server behind a public tunnel and print a QR to open it on a phone')
-  .option('-p, --port <port>', 'port to use (default: any free one — the tunnel hides it)')
-  .option('-k, --keypair <path>', KEYPAIR_HELP)
-  .option('--simulator', 'open the app in a phone on this computer instead, as a pretend user: no tunnel, no QR, no money')
-  .option('--no-open', "with --simulator, print its link and leave the browser alone")
+  .description('Run the dev server and open the app in the simulator: a phone on this computer, shown to a pretend user, paying fake dollars')
+  .option('-p, --port <port>', 'port to use (default: any free one)')
+  .option('--phone', 'open the app on your phone instead: a public tunnel and a QR, your signing key, real money')
+  .option('-k, --keypair <path>', `with --phone, the ${KEYPAIR_HELP}`)
+  .option('--no-open', 'print the simulator\'s link and leave the browser alone')
+  // The flag the simulator had while the phone was the default: still taken, so an older `npm run dev -- --simulator` keeps working.
+  .addOption(new Option('--simulator', 'the default; kept for scripts that pass it').hideHelp())
   .action(async (options) => {
     const { dev } = await lazy.dev();
     await dev({ ...program.opts(), ...options }, __VERSION__);
@@ -103,9 +105,10 @@ builtApps
   .command('create')
   .argument('[name]', "the app's name: written into the clone, and what the clone's directory is called")
   .option('--no-clone', "leave the app's repo on Bankroll instead of cloning it here")
-  .description("A new app from the starter, cloned here: build it yourself, then push")
+  .option('--no-install', 'clone, but leave `npm install` to you')
+  .description('A new app from the starter, cloned here with its dependencies installed: `cd` in and `npm run dev`')
   .action(async (name, options) => {
-    await apps.create(name, { ...program.opts(), noClone: options.clone === false });
+    await apps.create(name, { ...program.opts(), noClone: options.clone === false, noInstall: options.install === false });
   });
 
 builtApps

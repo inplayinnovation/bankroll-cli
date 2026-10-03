@@ -9,7 +9,7 @@ import { AppIcon } from "./app-icon";
 
 /**
  * The home screen: one icon per app. Apps come from whoever is serving the
- * simulator (/api/apps: the app `bankroll dev --simulator` was run in) and
+ * simulator (/api/apps: the app `bankroll dev` was run in) and
  * from URLs added here, which this browser keeps.
  */
 export function Launcher() {
