@@ -3,19 +3,35 @@
 Open work on the CLI. One line per item, with the why when it is not obvious.
 Tick an item when it ships, and delete ticked items at the next release.
 
-## Next release
+## Shipped on 2026-10-06, in this order
 
-- [ ] **Release 0.6.0** — what is on `main`: `apps create [name]`, `wait`, `faucet`, the `apps` table with its test and live commits and without `publish`/`unpublish`, the simulator as `dev`'s default (the phone loop is `dev --phone`), the host with its users, sheets, local chain and transactions, `apps create` installing the clone, Node 22, and the out-of-date notice. `apps` selects `test` and `live` on `builderApp`, which the api's environments promote brought to production on 2026-10-02, so nothing gates the release now. Bump the version and publish: the README and the skill already describe all of it, and 0.5.0 knows none of it.
-- [ ] **The SDK release the simulator needs** — the simulator is the app's host only from `@joinbankroll/sdk` 0.33.0 on, which is where the SDK's bridge comes in (pull request #4 on `bankroll-sdk`). Until that is published an app runs in the simulator with no host: an empty sidebar and its content under the status bar. The starter pins `^0.32.0`: move it to 0.33.0 with the release, and add the `bankroll.init()` call the release requires.
-- [ ] **Starter: pin the release** — the starter pins `@joinbankroll/cli` at `^0.4.0`, with 0.4.0 in its lockfile. Before 1.0 a caret stays inside the minor, so a new app's `npm run dev` never reaches a newer CLI, or its simulator, on its own. Bump it with every release.
-- [ ] **Starter: drop the mock host** — with `@joinbankroll/sdk` 0.33.0 the simulator's host is the SDK's bridge, and `src/app/app/mock-host.tsx` is only for a plain browser tab; keep it as the SDK's `MockHost` from `@joinbankroll/sdk/next`, or drop it, and add `bankroll.init()`.
-- [ ] **Docs** — local development needs a section on `bankroll dev` and the simulator, and the phone loop moving to `--phone`.
+Kept until the next release, as the file's rule says, and because the order
+is the story of how an app first runs: install the CLI, `bankroll login`,
+`bankroll apps create "Name"`, `cd name && npm run dev`, and the app is in the
+simulator, shown to a pretend user who pays fake dollars on a local chain.
+
+- [x] **`@joinbankroll/sdk` 0.33.0** — pull request #4 on `bankroll-sdk`, squashed onto `main` (`4e711c9`) and published by Gianni. `bankroll.init()`, required; the simulator's bridge, which is what makes the simulator the app's host; `MockHost`; the safe-area variables; reference lookups that ask a local chain.
+- [x] **Starter: SDK 0.33.0** (`a26651a`) — pins `^0.33.0`; `src/lib/client/bankroll.ts` calls `bankroll.init()` as it loads and is where client code gets `bankroll` from; the app's own mock host gave way to the SDK's `MockHost`, in the layout.
+- [x] **`@joinbankroll/cli` 0.6.0** — `gs/simulator` fast-forwarded onto `main` (`e5c7ec6`) and published by Gianni. `apps create [name]` that installs the clone and fetches the chain's node, `wait`, `faucet`, the `apps` table, `dev` opening the simulator (the phone loop is `dev --phone`), the host with its users, sheets, local chain and transactions, Node 22, the out-of-date notice.
+- [x] **Starter: CLI 0.6.0** (`7f7e4cb`) — pins `^0.6.0`; `npm run phone` is the tunnel and the QR; README and AGENTS.md teach `dev` as the simulator. Checked from the published packages: `npm run dev` in the clone opened the app in the simulator as tester with $1,000, the sidebar listing `init()` and the balance reads, the Transactions tab the minting and the funding.
+
+## Next
+
+- [ ] **Docs** (docs.joinbankroll.com, source in `docs/` of the `bankroll` monorepo) — nothing there mentions the simulator. Needed: a local-development section on `bankroll dev` and the simulator (users, sheets, the local chain, the Transactions tab, `~/.config/bankroll/simulator/`), the phone loop as `--phone` and `npm run phone`, the safe-area variables (`var(--bankroll-safe-area-inset-top, env(safe-area-inset-top))`), a 0.33.0 changelog entry that leads with `init()` as the one line every app must add, and 0.6.0 notes that say `dev` changed. The Bankroll skill installed on Gianni's Mac (`~/.claude/skills/bankroll`) is the August copy; the current one is `skills/bankroll/SKILL.md` here.
+- [ ] **Node 22 or 24** — the floor is `>=22` (`package.json` engines): 22 is maintenance LTS until April 2027, 24 the active LTS, and `WebSocket`, which the chain watcher uses, arrived in 22. Gianni asked why not require the current LTS; 24 would turn away developers on 22 for nothing we need. Decide, and change the one line if 24.
+- [ ] **PMORPG** (`~/Projects/pmorpg`) — runs a dogfood copy of the SDK and guards its `init()` call with `'init' in bankroll` because a deploy installed 0.32.0. Pin `@joinbankroll/sdk` to `^0.33.0`, drop the guard in `src/lib/client/bankroll.ts`, and remove the temporary `src/app/app/balance-check.tsx` and its three lines in `src/app/app/page.tsx`, which poll `balances()` every two seconds and were only there to watch calls fail before `init()`. Two commits of Gianni's are unpushed there; `git push bankroll main` builds the test version.
+- [ ] **Live apps** — each adds the one `bankroll.init()` line when it moves to 0.33.0; nothing works there without it.
+- [ ] **The Bankroll app** (hs3) — an `init` method on its `window.bankroll`, to hear which SDK a page runs; until then the phone ignores `init()` and nothing changes there. Its `bridge/injected-javascript.ts` is the page-side script the simulator's bridge mirrors; sharing one copy through the SDK was considered and deferred.
+
+## To raise with Greg
+
+- [ ] **Location is the client's word** — the api takes a session's location from the `X-Latitude` and `X-Longitude` headers the client sends (`api/src/lib/geo.ts`, read 2026-10-02), with no cross-check found, and accepts the CLI's Privy login for `mintAppToken` on any public https origin. So a location can be claimed against live apps today, with or without a simulator. Not the simulator's doing, and not changed by it; noted here so it is not lost.
 
 ## The simulator
 
 - [x] **Download the chain** — the CLI fetches the surfpool release it pins (`src/host/surfpool.ts`), checked against its SHA-256, once per computer: after `npm install` in `apps create`, or when `dev` finds none. `npm run pin-surfpool -- <version>` moves the pin. A surfpool on the PATH is the fallback.
 - [ ] **Other machines** — only this Mac has run the simulator with the chain. The fetch has a build for Mac x64, Linux x64 and Windows x64 too, untried; Windows needs `tar.exe` (Windows 10 and later have it) and its own process handling.
-- [ ] **An agent at the wheel** — an agent (Claude Code, say) cannot click a sheet or pick a person. It needs the host's paths as commands or flags (`dev --simulator --as alice`, a way to answer sheets, an auto-approve mode) so it can drive the app as a person and read what the host saw.
+- [ ] **An agent at the wheel** — an agent (Claude Code, say) cannot click a sheet or pick a person. It needs the host's paths as commands or flags (`dev --as alice`, a way to answer sheets, an auto-approve mode) so it can drive the app as a person and read what the host saw.
 - [ ] **Automated tests in CI** — start the chain and the host from a script, drive the app headless, assert on the host's answers. The pieces exist (`src/host/`, `/api/host`); what is missing is a command that runs them without the page.
 - [ ] **More of a person** — a location (country and region, carried as the session's `geo`), account states Bankroll's gates react to (restricted, verification pending), and editing a person after they are made. Today a person is a wallet, a username, an age or none, and a balance.
 - [ ] **Two people at once** — two phones side by side, each as its own person, for a match or a trade.
