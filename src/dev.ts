@@ -1,8 +1,10 @@
-// `bankroll dev` — your dev server, and the app in the simulator: a phone
-// frame in this computer's browser, shown to a pretend user who pays in fake
-// dollars on a local chain (src/simulator.ts, src/host/). The dev signing key,
-// which holds real money, stays out of it: the app's treasury in the simulator
-// is a key made up for the purpose.
+// `bankroll dev` — the app in Bankroll Desktop: a phone on this computer,
+// shown to a pretend user who pays in fake dollars on a local chain, with
+// every call the app makes listed beside it (src/desktop.ts). Bankroll
+// Desktop runs the app's dev server itself; this command hands it the folder
+// and says where the app came up. The dev signing key, which holds real
+// money, stays out of it: the app's treasury there is a key made up for the
+// purpose.
 //
 // `--phone` is the other way to look at the app, on a phone running Bankroll.
 // A Built for Bankroll app only ever runs inside Bankroll, and Bankroll refuses
@@ -15,59 +17,40 @@
 // app over the public internet rather than the local network, this also works
 // on networks that isolate clients from each other (most hotel, venue, and
 // in-flight Wi-Fi).
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { delimiter, join } from 'node:path';
 
 import { bin, install, Tunnel } from 'cloudflared';
 
-import { openBrowser } from './browser';
-import { CHAIN_PORT, type Chain, freeChainPort, Ledger, startChain } from './host/chain';
-import { Host } from './host/host';
-import { People } from './host/people';
-import { locateSurfpool, SURFPOOL_INSTALL } from './host/surfpool';
-import { loadTreasury } from './host/treasury';
-import { loadSigner } from './keypair';
+import { open, openLink, waitForProject } from './desktop';
 import { playUrl, resolveEnvironment } from './environments';
-import { launchPath, MANIFEST_PATH } from './manifest';
+import { loadSigner } from './keypair';
+import { launchPath } from './manifest';
 import { printQr } from './qr';
-import { serveSimulator } from './simulator';
 import { updateNotice } from './update';
 
 const DEV_COMMAND = 'next';
 const DEV_ARGS = ['dev'];
 const TUNNEL_TIMEOUT_MS = 20_000;
-// How long a dev server gets to answer its first request, how often it is
-// asked, and how long each ask waits.
-const SERVER_TIMEOUT_MS = 60_000;
-const SERVER_POLL_MS = 250;
-const SERVER_ASK_TIMEOUT_MS = 5_000;
 
 // cloudflared logs its own control-plane host while requesting the tunnel, and
 // the library matches any *.trycloudflare.com hostname — so this one arrives
 // first and has to be skipped to reach the assigned subdomain.
 const TUNNEL_API_ORIGIN = 'https://api.trycloudflare.com';
 
-
 // The dev server reads this; it is never written to a file.
 const TREASURY_KEY_ENV = 'BANKROLL_TREASURY_KEY';
-// What makes the app's server accept a pretend person's session token.
-const MOCK_ENV = 'BANKROLL_MOCK';
-// Where the app's server reads payments from: the local chain, in the simulator.
-const RPC_ENV = 'SOLANA_RPC_URL';
 
 export interface DevOptions {
   // From `-e`: the play link opens the app in that environment's Bankroll.
   env?: string;
+  /** With --phone: the dev server's port. Bankroll Desktop picks its own. */
   port?: string;
   keypair?: string;
-  /** The app on a phone, through a tunnel and a QR, in place of the simulator. */
+  /** The app on a phone, through a tunnel and a QR, in place of Bankroll Desktop. */
   phone?: boolean;
-  /** The old flag for the default; taken and ignored. */
-  simulator?: boolean;
-  /** False to print the simulator's link and leave the browser alone, for a shell with nobody at it. */
-  open?: boolean;
 }
 
 /**
@@ -129,130 +112,39 @@ async function openTunnel(port: string): Promise<{ origin: string | null; stop: 
   return { origin, stop: () => tunnel.stop() };
 }
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-/** True once the dev server answers anything at all; false if it never does. */
-async function serverReady(port: string): Promise<boolean> {
-  const deadline = Date.now() + SERVER_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    try {
-      await fetch(`http://localhost:${port}${MANIFEST_PATH}`, { signal: AbortSignal.timeout(SERVER_ASK_TIMEOUT_MS) });
-      return true;
-    } catch {
-      await wait(SERVER_POLL_MS);
-    }
-  }
-  return false;
-}
-
-/** What the simulator runs on: the app's made-up treasury, and the local chain, or why there is none. */
-interface Simulated {
-  treasury: { address: string; secretKey: string };
-  /** Where the chain will answer, known before it is up, or null when none starts. */
-  rpc: string | null;
-  chain: Promise<Chain | null>;
-  problem: string | null;
-}
-
-async function prepareSimulation(): Promise<Simulated> {
-  const treasury = loadTreasury();
-  // The pinned node, fetched once per computer if it is not here yet.
-  const surfpool = await locateSurfpool({ log: (line) => console.log(`  ${line}`) });
-  if (!surfpool) {
-    const problem = `There is no local chain to pay on: the node could not be fetched, and none is installed. Check your connection and start again, or install it with \`${SURFPOOL_INSTALL}\`.`;
-    return { treasury, rpc: null, chain: Promise.resolve(null), problem };
-  }
-  // The port is chosen now so the app's server can be told where the chain
-  // will be before the chain is up: it only asks once a payment is confirmed.
-  const port = await freeChainPort(CHAIN_PORT);
-  const chain = startChain({ surfpool: surfpool.path, port }).catch((error: unknown) => {
-    console.warn(`\n  The local chain did not start: ${error instanceof Error ? error.message : String(error)}\n`);
-    return null;
-  });
-  return { treasury, rpc: `http://127.0.0.1:${port}`, chain, problem: null };
-}
-
 /**
- * The simulator's half of `dev`: the page that shows the app, served from this
- * computer and opened in the browser, on the app's launch path, with the host
- * that answers the app behind it.
- *
- * There is no tunnel to wait for here, so the dev server may not be up yet:
- * the browser is opened once it answers, not on a page that refuses to load.
+ * The default: the folder this runs in, opened in Bankroll Desktop. The link
+ * launches Bankroll Desktop or reaches the one running; the state file says
+ * when the app's server is up and where. This command then ends: the server
+ * is Bankroll Desktop's, with its log in the Server tab.
  */
-async function simulate(
-  port: string,
-  child: ChildProcess,
-  notice: Promise<string | null>,
-  open: boolean,
-  version: string,
-  simulated: Simulated,
-): Promise<void> {
-  let stop = () => {};
-  const shutdown = () => {
-    stop();
-    child.kill();
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-  // Before the wait below, so a dev server that dies at once ends this too.
-  child.on('exit', (code) => {
-    stop();
-    process.exit(code ?? 0);
-  });
-
-  const chain = await simulated.chain;
-  const people = new People();
-  const host = new Host({
-    people,
-    treasury: simulated.treasury,
-    ledger: chain ? new Ledger(chain.rpc) : null,
-    ...(simulated.problem ? { chainProblem: simulated.problem } : chain ? {} : { chainProblem: 'the local chain did not start, so payments are refused' }),
-  });
-  try {
-    await host.start();
-  } catch (error) {
-    console.warn(`\n  The local chain could not be set up: ${error instanceof Error ? error.message : String(error)}\n`);
-  }
-
-  if (!(await serverReady(port))) {
-    console.warn(`\n  The dev server has not answered on port ${port}, so the simulator was not opened.\n`);
-    return;
-  }
-  // This command runs in the app's folder: the simulator's sidebar says what is installed there.
-  const about = { cli: version, dir: process.cwd() };
-  const simulator = await serveSimulator(`http://localhost:${port}${await launchPath(`http://localhost:${port}`)}`, process.env, about, host).catch((error: unknown) => {
-    // No simulator is a failure of the whole command: the dev server goes with it.
-    child.kill();
-    throw error;
-  });
-  stop = () => {
-    simulator.stop();
-    host.stop();
-    chain?.stop();
-  };
-
+async function openInDesktop(dir: string, options: DevOptions, notice: Promise<string | null>): Promise<void> {
+  if (process.platform !== 'darwin')
+    throw new Error('Bankroll Desktop runs on macOS for now. Here, `bankroll dev --phone` opens the app on your phone.');
+  if (options.port)
+    console.warn('\n  Bankroll Desktop picks the port: 3000 when it is free, the next ones up when it is not. --port is for --phone.');
+  if (open(openLink(dir)) === 'missing') throw new Error('Bankroll Desktop is not installed.');
+  console.log('\n  Opening the app in Bankroll Desktop…');
+  const result = await waitForProject(dir);
+  if ('problem' in result) throw new Error(result.problem);
+  console.log(`\n  Your app is open in Bankroll Desktop, shown to a pretend user who pays fake dollars on a local chain.\n  ${result.url}\n`);
   const update = await notice;
-  const person = people.current();
-  console.log(`\n  Your app is open in the simulator, shown to ${person.username}, a pretend user.`);
-  if (chain) console.log(`  Payments settle in fake dollars on a local chain at ${chain.rpc}; nothing is real.`);
-  else console.log(`  ${simulated.problem ?? 'The local chain did not start, so payments are refused.'}`);
-  console.log(`  ${simulator.url}\n`);
   if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
-  if (open) openBrowser(simulator.url);
 }
 
 export async function dev(options: DevOptions, version: string): Promise<void> {
-  // An explicit choice wins; otherwise take whatever is free.
-  const port = options.port ?? process.env.PORT ?? String(await freePort());
-  // In the simulator the app's treasury is a key made up for it: the signing
-  // key holds real money and is not touched.
-  const simulated = options.phone ? null : await prepareSimulation();
-  const signer = simulated ? null : loadSigner(options.keypair);
   // Asked now, said at the end, beside the link.
   const notice = updateNotice(version);
+  if (!options.phone) {
+    await openInDesktop(process.cwd(), options, notice);
+    return;
+  }
 
-  if (signer?.created) {
+  // An explicit choice wins; otherwise take whatever is free.
+  const port = options.port ?? process.env.PORT ?? String(await freePort());
+  const signer = loadSigner(options.keypair);
+
+  if (signer.created) {
     console.log(`
   Created a signing key
 
@@ -280,18 +172,9 @@ export async function dev(options: DevOptions, version: string): Promise<void> {
       PATH: `${join(process.cwd(), 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
       // Injected into this process only. The secret never reaches .env.local,
       // so it cannot be committed and does not survive the session.
-      [TREASURY_KEY_ENV]: simulated ? simulated.treasury.secretKey : signer!.secretKey,
-      // A pretend person's session token is accepted, and payments are read
-      // from the local chain. Set here and not left to the app's .env files,
-      // which an older app does not have.
-      ...(simulated ? { [MOCK_ENV]: '1', ...(simulated.rpc ? { [RPC_ENV]: simulated.rpc } : {}) } : {}),
+      [TREASURY_KEY_ENV]: signer.secretKey,
     },
   });
-
-  if (simulated) {
-    await simulate(port, child, notice, options.open !== false, version, simulated);
-    return;
-  }
 
   const { origin, stop } = await openTunnel(port);
 

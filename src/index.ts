@@ -4,7 +4,7 @@
 // machine, and it never leaves it. `login` is separate: it keeps a Bankroll
 // account session on this machine for the commands that act on your account
 // and your apps.
-import { Argument, Command, Option } from 'commander';
+import { Argument, Command } from 'commander';
 
 // Replaced at build time with this package's version — see tsup.config.ts.
 declare const __VERSION__: string;
@@ -37,13 +37,10 @@ program
 
 program
   .command('dev')
-  .description('Run the dev server and open the app in the simulator: a phone on this computer, shown to a pretend user, paying fake dollars')
-  .option('-p, --port <port>', 'port to use (default: any free one)')
+  .description('Open the app in Bankroll Desktop: a phone on this computer, shown to a pretend user, paying fake dollars')
   .option('--phone', 'open the app on your phone instead: a public tunnel and a QR, your signing key, real money')
+  .option('-p, --port <port>', 'with --phone, the port to use (default: any free one)')
   .option('-k, --keypair <path>', `with --phone, the ${KEYPAIR_HELP}`)
-  .option('--no-open', 'print the simulator\'s link and leave the browser alone')
-  // The flag the simulator had while the phone was the default: still taken, so an older `npm run dev -- --simulator` keeps working.
-  .addOption(new Option('--simulator', 'the default; kept for scripts that pass it').hideHelp())
   .action(async (options) => {
     const { dev } = await lazy.dev();
     await dev({ ...program.opts(), ...options }, __VERSION__);
