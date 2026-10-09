@@ -6,7 +6,7 @@ Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps
 npm i -g @joinbankroll/cli               # once per computer; Node 22 or later
 bankroll login                           # your Bankroll account
 bankroll apps create "Free Throw Duel"   # the app, its repo here, dependencies installed
-cd free-throw-duel && npm run dev        # the app in a phone on this computer, shown to a pretend user
+cd free-throw-duel && npm run dev        # the app in Bankroll Desktop: a phone on this computer, shown to a pretend user
 npm run dev -- --phone                   # or on your phone: tunnel + QR, scan it to open the app inside Bankroll
 git push bankroll main                   # Bankroll builds the test version
 bankroll wait test                       # the build, then the test address and a QR; it takes test cash
@@ -35,7 +35,7 @@ bankroll wait test                              the build a push to main started
 bankroll wait live                              the build a push to live started, then the live address
 bankroll faucet                                 test cash for your account
 
-bankroll dev                                    the app in a phone on this computer: the simulator
+bankroll dev                                    the app in Bankroll Desktop: a phone on this computer, a pretend user, fake dollars
 bankroll dev --phone                            on your phone instead: tunnel + QR, injects your key
 ```
 
@@ -81,92 +81,34 @@ on a TTY too. The full play link is printed under the QR either way.
 
 ### `bankroll dev`
 
-The default: no phone and no tunnel. Your browser opens a page with the app in
-an iPhone frame, and beside it the users the app can be shown to, every call
-the app makes to its host, and the local chain's transactions.
+The default: no phone and no tunnel. The app opens in Bankroll Desktop, in a
+phone on this computer, shown to a pretend user who pays in fake dollars on a
+local chain, with every call the app makes to its host and every transaction
+listed beside it.
 
 ```bash
 npm run dev
 ```
 
-(`--simulator`, the flag this had while the phone was the default, is still
-taken and means the same.)
+The command hands the folder to Bankroll Desktop and ends once the app is
+up, printing its address. Bankroll Desktop runs the app's dev server itself,
+with its log in the Server tab, and keeps running after the command returns,
+as Unity's Editor does after `unity open`. The server gets `BANKROLL_MOCK=1`,
+so the SDK's server half accepts a pretend user's session token;
+`SOLANA_RPC_URL` for the local chain; and a treasury key made up for the
+purpose. Your dev signing key, which holds real money, is never used there.
+The port is 3000 when it is free and the next ones up when it is not, so an
+app's own settings written for `localhost:3000` work. Running `bankroll dev`
+again restarts the server there.
 
-The app is shown to a pretend user, and pays in fake dollars on a chain of its
-own. At the top of the sidebar are the users on this computer, one row each,
-the chosen one filled in; the + in the title row makes another, with a
-username, an age or none (an account that has not verified), and a balance.
-Double-click a name to rename it, and rest the pointer on a row for a pencil
-and an x. Choosing another user starts the app over as them. The users live in
-`~/.config/bankroll/simulator/`, each with a wallet made up for them, never in
-your project.
-
-The simulator is the app's host, as the Bankroll app is on a phone: it answers
-every call the app makes, and where the phone would stop and ask its user, a
-sheet appears under the call's row for you to answer: consent the first time an
-app asks who the user is, approval of each payment with the time the app
-allowed, identity verification for a user who has none, and a deposit, which
-adds fake dollars. A refusal reaches the app with the phone's words for it, so
-`consent_declined`, `payment_denied` and the rest can be tried.
-
-The money is real to a chain. `dev` runs [surfpool](https://surfpool.run), a
-local Solana node, offline and fresh each time, and points the app's server at
-it. The node arrives once per computer: `bankroll apps create` fetches the
-release the CLI pins (about 33 MB, checked against its SHA-256) after `npm
-install`, and `dev` fetches it if it finds none, into
-`~/.config/bankroll/simulator/surfpool/`; a surfpool already on your PATH is
-used when the fetch fails. The Bankroll dollar is created on the chain at its
-real address when it starts, with the simulator's bank as the authority that
-may mint it. The bank mints its float, and every dollar after that moves by
-transfer: each user's starting balance, the treasury's float, every deposit. A
-payment is a transfer the app's server confirms with the SDK's real code:
-payee, token, amount and memo are checked as they are in production, and a
-charge is found by its reference. Nothing made here is valid anywhere else.
-Without a node the app still runs and users still have sessions and balances;
-payments are refused, with the reason.
-
-The sidebar's middle has two tabs. **SDK Calls** lists every call the app
-makes to its host, with what went in and what came back. **Transactions**
-lists the chain's activity as it happens, newest first: who paid whom how much,
-with the memo, for a transfer of the dollar; SOL for fees and accounts made,
-quieter; a transaction the chain refused, in red with its reason. A row opens
-to the signature, the reference, the slot, the fee payer, the instructions and
-the accounts, each copyable. A user's row shows what their wallet holds now.
-
-The app's treasury here is a key made up for the simulator, shown at the bottom
-of the sidebar with what it holds. Your dev signing key, which holds real money,
-is never used in the simulator. An app whose manifest names a treasury of its
-own is paid there instead, and the line says so.
-
-`dev` sets `BANKROLL_MOCK=1` for the app, so the SDK's server half accepts a
-pretend user's session token, and `SOLANA_RPC_URL` for the local chain. The
-simulator talks to the app through `@joinbankroll/sdk` 0.33.0 or later; on an
-older SDK the app still runs, with no host. The CLI needs Node 22 or later.
-
-The app fills the phone's screen, as it does in Bankroll, and the status bar and
-the home indicator are drawn over it. A phone tells a page how much room those
-take through `env(safe-area-inset-*)`; a browser on a computer says zero. So
-the simulator tells the SDK, which sets `--bankroll-safe-area-inset-top`,
-`-right`, `-bottom` and `-left` on the page. An app whose CSS reads
-`var(--bankroll-safe-area-inset-top, env(safe-area-inset-top))`, as the
-starter's shell does, keeps clear of both here as it does on a phone. One
-difference stays: Bankroll draws a bar of its own under an app, and the
-simulator does not, so an app has a little more height here than on a phone.
-
-The keyboard is the app's: a game that takes keys is played from the keyboard,
-with no click on the phone first. A phone has no keyboard, so that is for
-working on the app, not something a player has. The phone stays upright, as a
-phone running Bankroll does: an app there is only ever shown in portrait.
-
-The page is served from this computer alone, at `http://localhost:4100`, or the
-next free port. `--no-open` prints the link and leaves the browser alone.
-
-The simulator is part of this package, so it is as new as your CLI. `dev` says
-so when a newer CLI is published, and so does the simulator: at the bottom of
-its sidebar are the SDK your app runs and the CLI serving it, a line each,
-marked when a later release is out, when what is installed in the app's folder
-is not what the project asks for (a pull with no `npm install` after it), and
-when it is a local build. Rest the pointer on a line for the detail.
+The first `bankroll dev` on a Mac with no Bankroll Desktop installs it: the
+current build from `downloads.joinbankroll.com`, the feed the installed app
+updates itself from, checked against the checksum the feed states and
+unpacked into `/Applications` (or your own Applications folder). A terminal
+is asked first; a shell nobody watches gets on with it. Bankroll Desktop
+runs on macOS; elsewhere, `--phone` is the way to look at the app. A
+Bankroll Desktop older than 0.1.6 cannot take the link; the command says so
+and points at Check for Updates… in its app menu.
 
 ## The signing key
 
@@ -252,19 +194,11 @@ signing key.
 
 ```bash
 npm install
-npm run build        # the CLI into dist/, and the simulator into dist/simulator
+npm run build        # the CLI into dist/
 npm test
 npm run typecheck
 ```
 
-The simulator is a project of its own in [`simulator/`](./simulator), with its
-own dependencies; only its built files ship. Its README says how it fits
-together.
-
-`npm run dogfood -- ../my-app` is for working on the CLI, the SDK, the
-simulator and an app at once. It runs the app through this repo's
-`bankroll dev`, and keeps four things current on every save: the
-SDK (rebuilt, and copied into the app's `node_modules`), the CLI (rebuilt, and
-the app restarted with it), the simulator (its own dev server, hot reloading),
-and the app. It looks for the SDK in `../bankroll-sdk`; `BANKROLL_SDK` names
-another place.
+Bankroll Desktop, which `dev` opens, lives in the `bankroll` monorepo under
+`desktop/`; the link and the state file the two share are described in its
+README.
