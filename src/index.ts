@@ -37,7 +37,7 @@ program
 
 program
   .command('dev')
-  .description('Open the app in Bankroll Desktop: a phone on this computer, shown to a pretend user, paying fake dollars')
+  .description('Open the app in Bankroll Desktop, which runs it as the Bankroll app does on a phone: a test user, test cash, no real money')
   .option('--phone', 'open the app on your phone instead: a public tunnel and a QR, your signing key, real money')
   .option('-p, --port <port>', 'with --phone, the port to use (default: any free one)')
   .option('-k, --keypair <path>', `with --phone, the ${KEYPAIR_HELP}`)

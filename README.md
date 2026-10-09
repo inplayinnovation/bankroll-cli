@@ -6,7 +6,7 @@ Command-line tools for [Built for Bankroll](https://joinbankroll.com/build) apps
 npm i -g @joinbankroll/cli               # once per computer; Node 22 or later
 bankroll login                           # your Bankroll account
 bankroll apps create "Free Throw Duel"   # the app, its repo here, dependencies installed
-cd free-throw-duel && npm run dev        # the app in Bankroll Desktop: a phone on this computer, shown to a pretend user
+cd free-throw-duel && npm run dev        # the app in Bankroll Desktop: as on a phone, with a test user and test cash
 npm run dev -- --phone                   # or on your phone: tunnel + QR, scan it to open the app inside Bankroll
 git push bankroll main                   # Bankroll builds the test version
 bankroll wait test                       # the build, then the test address and a QR; it takes test cash
@@ -35,7 +35,7 @@ bankroll wait test                              the build a push to main started
 bankroll wait live                              the build a push to live started, then the live address
 bankroll faucet                                 test cash for your account
 
-bankroll dev                                    the app in Bankroll Desktop: a phone on this computer, a pretend user, fake dollars
+bankroll dev                                    the app in Bankroll Desktop: as on a phone, with a test user and test cash
 bankroll dev --phone                            on your phone instead: tunnel + QR, injects your key
 ```
 
@@ -81,10 +81,10 @@ on a TTY too. The full play link is printed under the QR either way.
 
 ### `bankroll dev`
 
-The default: no phone and no tunnel. The app opens in Bankroll Desktop, in a
-phone on this computer, shown to a pretend user who pays in fake dollars on a
-local chain, with every call the app makes to its host and every transaction
-listed beside it.
+The default: no phone and no tunnel. The app opens in Bankroll Desktop, which
+runs it on your Mac the way the Bankroll app runs it on a phone: the same
+screen, taps and approval sheets, as a test user with test cash. No real money
+moves. Beside the app, every call it makes to its host and every payment.
 
 ```bash
 npm run dev
@@ -92,14 +92,13 @@ npm run dev
 
 The command hands the folder to Bankroll Desktop and ends once the app is
 up, printing its address. Bankroll Desktop runs the app's dev server itself,
-with its log in the Server tab, and keeps running after the command returns,
-as Unity's Editor does after `unity open`. The server gets `BANKROLL_MOCK=1`,
-so the SDK's server half accepts a pretend user's session token;
-`SOLANA_RPC_URL` for the local chain; and a treasury key made up for the
-purpose. Your dev signing key, which holds real money, is never used there.
-The port is 3000 when it is free and the next ones up when it is not, so an
-app's own settings written for `localhost:3000` work. Running `bankroll dev`
-again restarts the server there.
+with its log in the Server tab, and keeps running after the command returns.
+It starts the server with the settings a test user needs, so the app's routes
+accept the test user's session and its server confirms test-cash payments
+with the SDK's real code. Your dev signing key, which holds real money, is
+never used there. The port is 3000 when it is free and the next ones up when
+it is not, so an app's own settings written for `localhost:3000` work.
+Running `bankroll dev` again restarts the server there.
 
 The first `bankroll dev` on a Mac with no Bankroll Desktop installs it: the
 current build from `downloads.joinbankroll.com`, the feed the installed app

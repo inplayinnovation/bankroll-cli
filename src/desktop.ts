@@ -1,9 +1,9 @@
 // Bankroll Desktop, from the command line. `bankroll dev` opens the app in it:
-// a phone on this computer, shown to a pretend user who pays fake dollars on a
-// local chain, with every call the app makes listed beside it. Bankroll
-// Desktop runs the app's dev server itself, so its logs and its env are in
-// one place; this command hands it the folder and says where the app came
-// up, as `unity open` hands a project to the Editor.
+// it runs the app on this Mac the way the Bankroll app runs it on a phone, as
+// a test user with test cash, with every call the app makes listed beside it.
+// Bankroll Desktop runs the app's dev server itself, so its logs and its env
+// are in one place; this command hands it the folder and says where the app
+// came up, as `unity open` hands a project to the Editor.
 //
 // Two things join the two. The `bankroll://open?project=<folder>` link, which
 // macOS delivers to the running Bankroll Desktop or launches it with. And the

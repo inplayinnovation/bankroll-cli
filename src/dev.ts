@@ -1,10 +1,9 @@
-// `bankroll dev` — the app in Bankroll Desktop: a phone on this computer,
-// shown to a pretend user who pays in fake dollars on a local chain, with
-// every call the app makes listed beside it (src/desktop.ts). Bankroll
-// Desktop runs the app's dev server itself; this command hands it the folder
-// and says where the app came up. The dev signing key, which holds real
-// money, stays out of it: the app's treasury there is a key made up for the
-// purpose.
+// `bankroll dev` — the app in Bankroll Desktop, which runs it on this Mac
+// the way the Bankroll app runs it on a phone: a test user, test cash, no
+// real money, every call the app makes listed beside it (src/desktop.ts).
+// Bankroll Desktop runs the app's dev server itself; this command hands it
+// the folder and says where the app came up. The dev signing key, which
+// holds real money, stays out of it.
 //
 // `--phone` is the other way to look at the app, on a phone running Bankroll.
 // A Built for Bankroll app only ever runs inside Bankroll, and Bankroll refuses
@@ -134,14 +133,14 @@ async function openInDesktop(dir: string, options: DevOptions, notice: Promise<s
   console.log('\n  Opening the app in Bankroll Desktop…');
   const result = await waitForProject(dir);
   if ('problem' in result) throw new Error(result.problem);
-  console.log(`\n  Your app is open in Bankroll Desktop, shown to a pretend user who pays fake dollars on a local chain.\n  ${result.url}\n`);
+  console.log(`\n  Your app is open in Bankroll Desktop, as a test user with test cash. No real money moves.\n  ${result.url}\n`);
   const update = await notice;
   if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
 }
 
 /** Puts Bankroll Desktop in an application folder, with a word first on a terminal. Resolves with the app's path. */
 async function installDesktop(): Promise<string> {
-  console.log('\n  Bankroll Desktop is not installed. It is where your app runs on this computer: a phone, a pretend user, a local chain.');
+  console.log('\n  Bankroll Desktop is not installed. It runs your app on this Mac the way the Bankroll app runs it on a phone, with a test user and test cash.');
   if (!(await confirm('Install it now, from downloads.joinbankroll.com?')))
     throw new Error('Bankroll Desktop is needed to open the app here. `bankroll dev --phone` opens it on your phone instead.');
   const log = (line: string) => console.log(`  ${line}`);
