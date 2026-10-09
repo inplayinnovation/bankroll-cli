@@ -24,10 +24,11 @@ import { delimiter, join } from 'node:path';
 
 import { bin, install, Tunnel } from 'cloudflared';
 
-import { open, openLink, waitForProject } from './desktop';
+import { fetchDesktop, fetchProgress, installedApp, open, openLink, waitForProject } from './desktop';
 import { playUrl, resolveEnvironment } from './environments';
 import { loadSigner } from './keypair';
 import { launchPath } from './manifest';
+import { confirm } from './prompt';
 import { printQr } from './qr';
 import { updateNotice } from './update';
 
@@ -123,13 +124,30 @@ async function openInDesktop(dir: string, options: DevOptions, notice: Promise<s
     throw new Error('Bankroll Desktop runs on macOS for now. Here, `bankroll dev --phone` opens the app on your phone.');
   if (options.port)
     console.warn('\n  Bankroll Desktop picks the port: 3000 when it is free, the next ones up when it is not. --port is for --phone.');
-  if (open(openLink(dir)) === 'missing') throw new Error('Bankroll Desktop is not installed.');
+  const link = openLink(dir);
+  if (open(link) === 'missing') {
+    // One macOS has not met yet, or none at all: in the second case, the
+    // current build from the feed the installed app would update from.
+    const app = installedApp() ?? (await installDesktop());
+    open(link, { app });
+  }
   console.log('\n  Opening the app in Bankroll Desktop…');
   const result = await waitForProject(dir);
   if ('problem' in result) throw new Error(result.problem);
   console.log(`\n  Your app is open in Bankroll Desktop, shown to a pretend user who pays fake dollars on a local chain.\n  ${result.url}\n`);
   const update = await notice;
   if (update) console.log(`  ${update.replace(/\n/g, '\n  ')}\n`);
+}
+
+/** Puts Bankroll Desktop in an application folder, with a word first on a terminal. Resolves with the app's path. */
+async function installDesktop(): Promise<string> {
+  console.log('\n  Bankroll Desktop is not installed. It is where your app runs on this computer: a phone, a pretend user, a local chain.');
+  if (!(await confirm('Install it now, from downloads.joinbankroll.com?')))
+    throw new Error('Bankroll Desktop is needed to open the app here. `bankroll dev --phone` opens it on your phone instead.');
+  const log = (line: string) => console.log(`  ${line}`);
+  const { path, version } = await fetchDesktop({ progress: fetchProgress(log) });
+  log(`Bankroll Desktop ${version} is in ${path}.`);
+  return path;
 }
 
 export async function dev(options: DevOptions, version: string): Promise<void> {

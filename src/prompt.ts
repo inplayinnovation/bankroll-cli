@@ -28,3 +28,19 @@ export async function ask(
     rl.close();
   }
 }
+
+/**
+ * A yes or no, yes unless said otherwise. Without a terminal the answer is
+ * the default: a shell nobody watches, a coding agent's, gets on with it.
+ */
+export async function confirm(question: string, fallback = true): Promise<boolean> {
+  if (!process.stdin.isTTY) return fallback;
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = (await rl.question(`  ${question} ${fallback ? '[Y/n]' : '[y/N]'} `)).trim().toLowerCase();
+    if (!answer) return fallback;
+    return answer === 'y' || answer === 'yes';
+  } finally {
+    rl.close();
+  }
+}
