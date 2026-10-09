@@ -1,9 +1,8 @@
-// Saying when this CLI is out of date. It has to be said somewhere: the
-// simulator ships inside the package, so a developer's simulator is exactly as
-// old as their CLI, and an app pins its own copy, which never moves by itself.
+// Saying when this CLI is out of date. An app pins its own copy, which never
+// moves by itself, so it has to be said somewhere.
 //
-// One request to the registry, with a short patience, while the dev server
-// starts. No answer is no notice: being offline is not something to report.
+// One request to the registry, with a short patience, while Bankroll Desktop
+// opens. No answer is no notice: being offline is not something to report.
 const REGISTRY = 'https://registry.npmjs.org';
 const CLI = '@joinbankroll/cli';
 const PATIENCE_MS = 1_500;
