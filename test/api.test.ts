@@ -2,9 +2,9 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { NOT_LOGGED_IN, currentSession, graphql } from '../src/api';
+import { CAN_CREATE_APPS, NOT_LOGGED_IN, currentSession, graphql } from '../src/api';
 import type { Fetch } from '../src/privyDevice';
 import { readSession, writeSession, type Session, type SessionLocation } from '../src/session';
 import { FileStore } from '../src/sessionStore';
@@ -101,5 +101,46 @@ describe('graphql', () => {
     await expect(graphql(location, 'query { session { ip } }', {}, { fetchImpl, now: () => NOW })).rejects.toThrow(
       'Invalid or expired token',
     );
+  });
+});
+
+describe('a login from before the CLI let accounts in', () => {
+  const APPS = 'query Apps { builderApps { id } }';
+  // The api's CLI scope allows exactly this selection.
+  const JOIN = 'mutation Join { builderJoin { approved } }';
+  const WAITING = 'The builder is not open to this account yet.';
+  const refused = { status: 200, body: { errors: [{ message: WAITING, extensions: { code: 'BUILDER_WAITLIST' } }] } };
+  const joined = { status: 200, body: { data: { builderJoin: { approved: true } } } };
+  const apps = { status: 200, body: { data: { builderApps: [] } } };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const run = (responses: { status: number; body: unknown }[]) => {
+    const location = scratch();
+    writeSession(fresh, location.file);
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { calls, fetchImpl } = scripted(responses);
+    const result = graphql(location, APPS, {}, { fetchImpl, now: () => NOW });
+    return { calls, result, stderr };
+  };
+
+  it('is let in when refused, says so on stderr, and sends the request again', async () => {
+    const { calls, result, stderr } = run([refused, joined, apps]);
+    expect(await result).toEqual({ builderApps: [] });
+    expect(calls.map((call) => JSON.parse(call.body).query)).toEqual([APPS, JOIN, APPS]);
+    expect(stderr).toHaveBeenCalledWith(`\n  ${CAN_CREATE_APPS}\n`);
+  });
+
+  it("surfaces the join's own refusal", async () => {
+    const restricted = { status: 200, body: { errors: [{ message: 'Your account has been restricted.' }] } };
+    const { calls, result } = run([refused, restricted]);
+    await expect(result).rejects.toThrow('Your account has been restricted.');
+    expect(calls).toHaveLength(2);
+  });
+
+  it('asks once: a second refusal is the answer', async () => {
+    const { calls, result } = run([refused, joined, refused]);
+    await expect(result).rejects.toThrow(WAITING);
+    expect(calls).toHaveLength(3);
   });
 });

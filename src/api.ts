@@ -84,12 +84,43 @@ interface GraphQLResponse<T> {
   errors?: { message: string; extensions?: { code?: string } }[];
 }
 
+// A login lets its account create apps at once: `bankroll login` asks the api
+// to let it in. A login made before the CLI asked is refused with this code,
+// let in here, and its request sent once more.
+const BUILDER_WAITLIST_CODE = 'BUILDER_WAITLIST';
+const JOIN_MUTATION = `mutation Join { builderJoin { approved } }`;
+export const CAN_CREATE_APPS = 'You can create apps from this account: `bankroll apps create`';
+
+class BuilderWaitlistError extends Error {}
+
+/** Lets this login's account create apps. */
+export async function joinBuilder(location: SessionLocation, options: SessionOptions = {}): Promise<void> {
+  await send(location, JOIN_MUTATION, {}, options);
+}
+
 /** One GraphQL operation, as the logged-in person, against the api they logged in to. */
 export async function graphql<T>(
   location: SessionLocation,
   query: string,
   variables: Record<string, unknown> = {},
   options: SessionOptions = {},
+): Promise<T> {
+  try {
+    return await send<T>(location, query, variables, options);
+  } catch (error) {
+    if (!(error instanceof BuilderWaitlistError)) throw error;
+    await joinBuilder(location, options);
+    // On stderr: the git credential helper's stdout belongs to git.
+    console.error(`\n  ${CAN_CREATE_APPS}\n`);
+    return send<T>(location, query, variables, options);
+  }
+}
+
+async function send<T>(
+  location: SessionLocation,
+  query: string,
+  variables: Record<string, unknown>,
+  options: SessionOptions,
 ): Promise<T> {
   const session = await currentSession(location, options);
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -109,7 +140,9 @@ export async function graphql<T>(
     throw new Error(`${session.apiUrl} answered ${response.status} with something that is not JSON: ${text}`);
   }
   if (parsed.errors?.length) {
-    throw new Error(parsed.errors.map((error) => error.message).join('\n  '));
+    const message = parsed.errors.map((error) => error.message).join('\n  ');
+    const waiting = parsed.errors.some((error) => error.extensions?.code === BUILDER_WAITLIST_CODE);
+    throw waiting ? new BuilderWaitlistError(message) : new Error(message);
   }
   if (!response.ok || parsed.data === undefined) {
     throw new Error(`${session.apiUrl} answered ${response.status}: ${text}`);

@@ -1,7 +1,7 @@
 // `bankroll login` — a Bankroll account on this computer, for the commands
 // that act on your account rather than on a project: approve once in a
 // browser, and the session lives in the credential store until `logout`.
-import { graphql } from './api';
+import { CAN_CREATE_APPS, graphql, joinBuilder } from './api';
 import { openBrowser } from './browser';
 import { PRODUCTION, resolveEnvironment } from './environments';
 import { pollForTokens, requestDeviceCode } from './privyDevice';
@@ -54,7 +54,9 @@ export async function login(options: LoginOptions): Promise<void> {
   writeSession(session, store);
   // A file left from an earlier login must not shadow the keychain.
   if (store !== location.file) location.file.clear();
-  console.log(`\n  Logged in as ${await describeUser(options)}, kept in ${store.where}\n`);
+  console.log(`\n  Logged in as ${await describeUser(options)}, kept in ${store.where}`);
+  await joinBuilder(location);
+  console.log(`  ${CAN_CREATE_APPS}\n`);
 }
 
 export function logout(options: AccountOptions): void {
