@@ -149,6 +149,10 @@ npx skills add inplayinnovation/bankroll-cli --skill bankroll -g
 Bankroll with your phone number, and approve the code. The terminal finishes on
 its own. It is the same device login GitHub's CLI uses.
 
+Once you log in, your account can create apps. Your live version takes real
+money, so before it goes live, Bankroll needs to know who you are. Verify your
+identity in the Bankroll app, then `git push bankroll main:live`.
+
 The session goes into your credential store: the keychain on macOS, the
 keyring through `secret-tool` on Linux. It refreshes itself and lasts 30 days
 from the last use. `bankroll logout` removes it.

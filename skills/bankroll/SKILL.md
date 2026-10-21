@@ -164,6 +164,7 @@ an image or attachment; neither renders in a terminal chat.
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | `bankroll wait test` says `failed:` | The build failed: describe, classify, sign, or deploy | It prints the reason; fix and push again |
+| `bankroll wait live` says Bankroll needs to know who you are | The account has not verified its identity, and the live version takes real money | Ask the user to verify their identity in the Bankroll app, then push to live again |
 | `bankroll wait test` says the SDK is too old | A test build needs `@joinbankroll/sdk` 0.32.0 or later in the lockfile | `npm install @joinbankroll/sdk@latest`, commit, push again |
 | "Could not set up the app" from `apps create` | Provisioning failed on Bankroll's side | Try once more; if it repeats, tell the user |
 | "Can't open this app" on the phone | The tunnel died on restart | Restart `npm run dev -- --phone`, scan the new QR |
