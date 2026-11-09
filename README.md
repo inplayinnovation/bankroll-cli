@@ -170,7 +170,8 @@ nobody is watching.
 
 An app declares its own name, in `bankroll-app.json` at the root of its repo:
 Bankroll signs that name into the app's manifest on the next push, and shows
-it everywhere. The same file is what a remix starts from.
+it everywhere. The same file is what a remix starts from, and it takes
+`"push": true` when the app notifies its users, signed in the same way.
 
 `bankroll apps create "Free Throw Duel"` makes that declaration for you. It
 writes the name into the clone's `bankroll-app.json`, commits that one file,

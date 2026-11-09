@@ -50,6 +50,9 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
    next push, and the name in the manifest is the name a player sees. Until a
    push carries one the app has no name, and `bankroll apps` lists it as
    `Unnamed app`.
+   The same file takes `"push": true` when the app notifies its users with
+   `notifyUser` from `@joinbankroll/sdk/server`; Bankroll signs that in at the
+   next push too (docs: build/push).
 3. Look for `.env.development` at the project root. Bankroll writes it when
    it creates an app, with `STORE=fs`, `BANKROLL_MOCK=1`, and the app's payee,
    owner, and wallet id, and `next dev` reads it. An older app has none; give
