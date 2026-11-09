@@ -136,6 +136,23 @@ export interface CreateOptions {
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/**
+ * Where `create` clones: the directory asked for; else the name as a path,
+ * unless a directory of that name is already here, when the repo's own name
+ * stands in (undefined), as it does for an app with no name. `taken` is the
+ * directory that was already here, for the person to be told.
+ */
+export function cloneDirectory(
+  name: string | undefined,
+  chosen: string | undefined,
+  exists: (path: string) => boolean,
+): { directory: string | undefined; taken: string | null } {
+  if (chosen !== undefined) return { directory: chosen, taken: null };
+  const slug = name === undefined ? undefined : directoryFor(name);
+  if (slug === undefined) return { directory: undefined, taken: null };
+  return exists(slug) ? { directory: undefined, taken: slug } : { directory: slug, taken: null };
+}
+
 /** What became of a name given to `create`, once the clone is here. */
 function declared(target: string, name: string): string {
   try {
@@ -156,23 +173,32 @@ function declared(target: string, name: string): string {
  * The api takes no name: an app declares its own in `bankroll-app.json`, and
  * has it once a push is built. A name given here is the same declaration,
  * made for the person: written into the clone, committed, and lent to the
- * clone's directory. Without one the app has no name yet, and says so.
+ * clone's directory, unless a directory is given or one of that name is
+ * already here, when the repo's own name stands in. Without a name the app
+ * has no name yet, and says so.
  */
-export async function create(given: string | undefined, options: AccountOptions & CreateOptions): Promise<void> {
+export async function create(
+  given: string | undefined,
+  where: string | undefined,
+  options: AccountOptions & CreateOptions,
+): Promise<void> {
   const name = given?.trim();
   if (name === '') throw new Error('The name is empty. Leave it out to name the app later.');
-  if (name !== undefined && options.noClone) {
-    throw new Error(`A name is written into the clone, so it cannot go with --no-clone. Name the app in ${DECLARATION_FILE} once it is cloned.`);
+  const chosen = where?.trim();
+  if (chosen === '') throw new Error('The directory is empty. Leave it out to clone into the name, or the repo name.');
+  if (options.noClone && (name !== undefined || chosen !== undefined)) {
+    throw new Error(`A name and a directory are for the clone, so neither goes with --no-clone. Name the app in ${DECLARATION_FILE} once it is cloned.`);
   }
   // Refused before the app is made: an app whose clone fails still exists.
-  const directory = name === undefined ? undefined : directoryFor(name);
-  if (directory !== undefined && existsSync(directory)) {
-    throw new Error(`${directory} is already here. Give the app another name, or run this somewhere else.`);
+  if (chosen !== undefined && existsSync(chosen)) {
+    throw new Error(`${chosen} is already here. Pick another directory.`);
   }
+  const { directory, taken } = cloneDirectory(name, chosen, existsSync);
   const data = await graphql<{ builderCreateApp: AppState }>(locationFor(options), CREATE_MUTATION);
   const app = data.builderCreateApp;
   console.log(`\n  ${describeApp(name === undefined ? app : { ...app, name })}`);
   if (name === undefined) console.log(`  ${NAME_HINT}`);
+  if (taken !== null) console.log(`  ${taken} is already here, so the clone goes into a directory named after the repo.`);
   if (options.noClone) {
     console.log(`  Clone it with \`bankroll apps clone ${app.id}\`; its first push builds its test version.`);
     console.log(`  ${SKILL_HINT}\n`);

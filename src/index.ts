@@ -100,12 +100,13 @@ builtApps
 
 builtApps
   .command('create')
-  .argument('[name]', "the app's name: written into the clone, and what the clone's directory is called")
+  .argument('[name]', "the app's name: written into the clone and committed; also the clone's directory, unless one is given or taken")
+  .argument('[directory]', 'where to clone it (default: the name as a directory, else the repo name)')
   .option('--no-clone', "leave the app's repo on Bankroll instead of cloning it here")
   .option('--no-install', 'clone, but leave `npm install` to you')
   .description('A new app from the starter, cloned here with its dependencies installed: `cd` in and `npm run dev`')
-  .action(async (name, options) => {
-    await apps.create(name, { ...program.opts(), noClone: options.clone === false, noInstall: options.install === false });
+  .action(async (name, directory, options) => {
+    await apps.create(name, directory, { ...program.opts(), noClone: options.clone === false, noInstall: options.install === false });
   });
 
 builtApps

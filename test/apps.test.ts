@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeApp, filterApps, formatApps, type AppRow } from '../src/apps';
+import { cloneDirectory, describeApp, filterApps, formatApps, type AppRow } from '../src/apps';
 
 const COMMIT = '3f2a9c1e7d0b4c5a9e8f1b2c3d4e5f6a7b8c9d0e';
 const NEWER = '9c0d2e4f6a8b1c3d5e7f9a0b2c4d6e8f0a1b3c5d';
@@ -110,5 +110,39 @@ describe('filterApps', () => {
   it('shows only archived apps, or everything', () => {
     expect(filterApps(all, { archived: true }).shown).toEqual([archived]);
     expect(filterApps(all, { all: true })).toEqual({ shown: all, archivedHidden: 0 });
+  });
+});
+
+describe('cloneDirectory', () => {
+  const none = () => false;
+  const here = (taken: string) => (path: string) => path === taken;
+
+  it('is the directory asked for, whatever the name', () => {
+    expect(cloneDirectory('Free Throw Duel', 'ports/duel', here('free-throw-duel'))).toEqual({
+      directory: 'ports/duel',
+      taken: null,
+    });
+    expect(cloneDirectory(undefined, 'br-63', none)).toEqual({ directory: 'br-63', taken: null });
+  });
+
+  it('is the name as a path when nothing is asked for and that path is free', () => {
+    expect(cloneDirectory('Free Throw Duel', undefined, none)).toEqual({
+      directory: 'free-throw-duel',
+      taken: null,
+    });
+  });
+
+  // A port made beside its source, as "Globe Sniper" beside globe-sniper, is
+  // the common case: the clone takes the repo's own name instead of refusing.
+  it('leaves the directory to the repo name when one of the name is already here, and says which', () => {
+    expect(cloneDirectory('Globe Sniper', undefined, here('globe-sniper'))).toEqual({
+      directory: undefined,
+      taken: 'globe-sniper',
+    });
+  });
+
+  it('leaves the directory to the repo name for no name, or a name that makes no path', () => {
+    expect(cloneDirectory(undefined, undefined, none)).toEqual({ directory: undefined, taken: null });
+    expect(cloneDirectory('日本語', undefined, none)).toEqual({ directory: undefined, taken: null });
   });
 });
