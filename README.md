@@ -26,7 +26,7 @@ bankroll logout                                 forget the login on this compute
 bankroll whoami                                 who this computer is logged in as
 bankroll apps                                   your apps, with the commit each version serves
 bankroll apps --archived                        only archived; --all for everything
-bankroll apps create [name]                     a new app, cloned here and installed; --no-clone, --no-install
+bankroll apps create [name] [directory]         a new app, cloned here and installed; --no-clone, --no-install
 bankroll apps clone <id> [dir]                  an existing app's repo, remote named bankroll
 bankroll apps archive <id>                      off the air; code, data, wallet stay
 bankroll apps unarchive <id>                    back on the air
@@ -176,11 +176,14 @@ it everywhere. The same file is what a remix starts from.
 writes the name into the clone's `bankroll-app.json`, commits that one file,
 and clones into `free-throw-duel`. Bankroll learns the name from the first
 push, so until then `bankroll apps` lists an `Unnamed app`. If a directory of
-that name is already here, nothing is made.
+that name is already here, as it is for a port made beside its source, the
+clone lands in one named after the repo, `br-12-abc123`, and the command says
+so. A second argument chooses the directory outright:
+`bankroll apps create "Free Throw Duel" ports/duel`.
 
 With no name the clone lands in a directory named after the repo,
 `br-12-abc123`, and the name is yours to put in the file. `--no-clone` takes
-no name: there is no clone to write it into.
+no name and no directory: there is no clone to write into.
 
 ### `bankroll apps clone`
 

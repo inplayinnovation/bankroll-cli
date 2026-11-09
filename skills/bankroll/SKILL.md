@@ -23,6 +23,7 @@ bankroll login                      # opens the browser; log in with a phone num
 bankroll apps                       # your apps, with the commit each version serves and the latest run's state
 bankroll apps create                # a new app from the starter, cloned into ./br-<id>-xxxxxx
 bankroll apps create "Its Name"     # the same, named: the name is committed in the clone, ./its-name
+bankroll apps create "Its Name" dir # the same, cloned into ./dir; with ./its-name taken, the repo name is used
 bankroll apps clone <id>            # an app you already have, if its repo is not here
 bankroll wait test                  # after `git push bankroll main`: the build, then the test address and a QR
 bankroll wait live                  # after `git push bankroll main:live`: the build, then the live address
@@ -39,8 +40,10 @@ Inside an app repo, `npx bankroll` runs the version the app pins. Leave the
    into the directory it prints, then `npm install`. If the user has already
    named the app, pass the name: `bankroll apps create "Free Throw Duel"` also
    writes it into `bankroll-app.json`, commits it, and clones into
-   `./free-throw-duel`. For an app that already exists,
-   `bankroll apps clone <id>`.
+   `./free-throw-duel`; if that directory is already here, the clone lands in
+   one named after the repo, or where a second argument says
+   (`bankroll apps create "Free Throw Duel" ports/duel`). For an app that
+   already exists, `bankroll apps clone <id>`.
 2. Name the app in `bankroll-app.json` at the root of the repo, next to
    drawing its icon: `{ "name": "Free Throw Duel" }`, unless `create` was
    given the name. Bankroll signs that name into the app's manifest on the
