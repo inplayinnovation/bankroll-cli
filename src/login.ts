@@ -14,6 +14,7 @@ const FILE_FLAG = '--allow-file-session';
 const YES = new Set(['y', 'yes']);
 
 export const WHOAMI_QUERY = `query Whoami { session { user { username walletAddress } } }`;
+export const PICK_A_USERNAME = 'Pick a username: `bankroll username <name>`';
 
 export interface Account {
   username: string | null;
@@ -71,6 +72,7 @@ export function loggedInLines(account: Account, environmentName: string, where: 
   return [
     `Logged in as ${describeAccount(account, environmentName)}, kept in ${where}`,
     CAN_CREATE_APPS,
+    ...(account.username ? [] : [PICK_A_USERNAME]),
   ];
 }
 

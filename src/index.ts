@@ -14,6 +14,7 @@ import { faucet } from './faucet';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import { login, logout, whoami } from './login';
 import * as repo from './repo';
+import { username } from './username';
 import { TARGETS, wait } from './wait';
 
 // `dev` loads the tunnel library, which is slow to start. It is imported
@@ -66,6 +67,14 @@ program
   .description('Who this computer is logged in as')
   .action(async () => {
     await whoami(program.opts());
+  });
+
+program
+  .command('username')
+  .argument('[name]', 'the username to set')
+  .description('Show your Bankroll username, or set it')
+  .action(async (name) => {
+    await username(name, program.opts());
   });
 
 // Git is the interface to an app's versions: `git push bankroll main` builds
