@@ -24,6 +24,7 @@ way.
 bankroll login                                  log in to your Bankroll account
 bankroll logout                                 forget the login on this computer
 bankroll whoami                                 who this computer is logged in as
+bankroll username [name]                        show your Bankroll username, or set it
 bankroll apps                                   your apps, with the commit each version serves
 bankroll apps --archived                        only archived; --all for everything
 bankroll apps create [name] [directory]         a new app, cloned here and installed; --no-clone, --no-install
@@ -152,6 +153,9 @@ its own. It is the same device login GitHub's CLI uses.
 Once you log in, your account can create apps. Your live version takes real
 money, so before it goes live, Bankroll needs to know who you are. Verify your
 identity in the Bankroll app, then `git push bankroll main:live`.
+
+A new account has no username. `bankroll username <name>` sets it, and
+`bankroll username` shows it.
 
 The session goes into your credential store: the keychain on macOS, the
 keyring through `secret-tool` on Linux. It refreshes itself and lasts 30 days

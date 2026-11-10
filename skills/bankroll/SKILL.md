@@ -20,6 +20,7 @@ is mostly rules.
 ```bash
 npm i -g @joinbankroll/cli          # once per machine
 bankroll login                      # opens the browser; log in with a phone number, approve the code
+bankroll username <name>            # set your Bankroll username; with no name, show it
 bankroll apps                       # your apps, with the commit each version serves and the latest run's state
 bankroll apps create                # a new app from the starter, cloned into ./br-<id>-xxxxxx
 bankroll apps create "Its Name"     # the same, named: the name is committed in the clone, ./its-name
