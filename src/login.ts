@@ -15,8 +15,13 @@ const YES = new Set(['y', 'yes']);
 
 export const WHOAMI_QUERY = `query Whoami { session { user { username walletAddress } } }`;
 
+export interface Account {
+  username: string | null;
+  walletAddress: string | null;
+}
+
 export interface WhoamiData {
-  session: { user: { username: string | null; walletAddress: string | null } | null };
+  session: { user: Account | null };
 }
 
 export interface AccountOptions {
@@ -54,9 +59,19 @@ export async function login(options: LoginOptions): Promise<void> {
   writeSession(session, store);
   // A file left from an earlier login must not shadow the keychain.
   if (store !== location.file) location.file.clear();
-  console.log(`\n  Logged in as ${await describeUser(options)}, kept in ${store.where}`);
+  // Joining comes first: the api gives an account made on the web its wallet
+  // when it joins, and the first line names that wallet.
   await joinBuilder(location);
-  console.log(`  ${CAN_CREATE_APPS}\n`);
+  const account = await currentAccount(options);
+  console.log(`\n  ${loggedInLines(account, environment.name, store.where).join('\n  ')}\n`);
+}
+
+/** What `bankroll login` prints once the account is in. */
+export function loggedInLines(account: Account, environmentName: string, where: string): string[] {
+  return [
+    `Logged in as ${describeAccount(account, environmentName)}, kept in ${where}`,
+    CAN_CREATE_APPS,
+  ];
 }
 
 export function logout(options: AccountOptions): void {
@@ -65,7 +80,8 @@ export function logout(options: AccountOptions): void {
 }
 
 export async function whoami(options: AccountOptions): Promise<void> {
-  console.log(`\n  ${await describeUser(options)}\n`);
+  const environment = resolveEnvironment(options.env);
+  console.log(`\n  ${describeAccount(await currentAccount(options), environment.name)}\n`);
 }
 
 // The credential store, or the file once the person has agreed to it.
@@ -99,13 +115,15 @@ async function fileWithPermission(location: SessionLocation, why: string, option
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "@name (wallet)", plus the environment's name when it is not production.
-async function describeUser(options: AccountOptions): Promise<string> {
-  const environment = resolveEnvironment(options.env);
-  const data = await graphql<WhoamiData>(sessionLocation(environment), WHOAMI_QUERY);
-  const user = data.session.user;
-  if (!user) throw new Error('The api accepted the login but found no account behind it.');
-  const name = user.username ? `@${user.username}` : 'an account without a username';
-  const where = environment.name === PRODUCTION.name ? '' : ` on ${environment.name}`;
-  return `${name} (${user.walletAddress ?? 'no wallet'})${where}`;
+async function currentAccount(options: AccountOptions): Promise<Account> {
+  const data = await graphql<WhoamiData>(sessionLocation(resolveEnvironment(options.env)), WHOAMI_QUERY);
+  if (!data.session.user) throw new Error('The api accepted the login but found no account behind it.');
+  return data.session.user;
+}
+
+/** "@name (wallet)", plus the environment's name when it is not production. */
+export function describeAccount(account: Account, environmentName: string): string {
+  const name = account.username ? `@${account.username}` : 'an account without a username';
+  const where = environmentName === PRODUCTION.name ? '' : ` on ${environmentName}`;
+  return `${name} (${account.walletAddress ?? 'no wallet'})${where}`;
 }
