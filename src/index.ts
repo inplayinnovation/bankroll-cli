@@ -10,6 +10,7 @@ import { Argument, Command } from 'commander';
 declare const __VERSION__: string;
 
 import * as apps from './apps';
+import * as secrets from './env';
 import { faucet } from './faucet';
 import { DEFAULT_KEYPAIR_PATH } from './keypair';
 import { login, logout, whoami } from './login';
@@ -141,6 +142,55 @@ builtApps
   .description('Put an archived app back on the air, same version')
   .action(async (id) => {
     await apps.unarchive(id, program.opts());
+  });
+
+// An app's secrets: values for outside services that the app reads as
+// process.env.NAME. A value is never an argument, so it never reaches the
+// shell's history: it is typed with nothing shown, piped in, or read from a
+// file. See src/env.ts.
+const APP_OPTION = ['--app <id>', 'the app, by its id from the list (default: the clone this runs in)'] as const;
+const TEST_OPTION = ['--test', 'only the test version (default: test and live)'] as const;
+const LIVE_OPTION = ['--live', 'only the live version (default: test and live)'] as const;
+const NO_REBUILD_OPTION = ['--no-rebuild', 'do not build the versions again now; the change is read at the next build'] as const;
+
+const env = program
+  .command('env')
+  .alias('secrets')
+  .description("The app's secrets: API keys and passwords it reads as process.env.NAME. Nobody can read a value back");
+
+env
+  .command('list', { isDefault: true })
+  .alias('ls')
+  .option(...APP_OPTION)
+  .description("List the names of the app's secrets, and which versions have a value")
+  .action(async (options) => {
+    await secrets.list({ ...program.opts(), ...options });
+  });
+
+env
+  .command('set')
+  .argument('<names...>', 'the names to set, such as KALSHI_API_KEY; each value is asked for with nothing shown')
+  .option(...APP_OPTION)
+  .option(...TEST_OPTION)
+  .option(...LIVE_OPTION)
+  .option('--from-file <path>', 'read the value of one name from a file: for a value of several lines, such as a PEM key')
+  .option(...NO_REBUILD_OPTION)
+  .description('Give the app a secret, or replace its value, then build the versions again so they read it')
+  .action(async (names, options) => {
+    await secrets.set(names, { ...program.opts(), ...options });
+  });
+
+env
+  .command('rm')
+  .alias('remove')
+  .argument('<names...>', 'the names to remove')
+  .option(...APP_OPTION)
+  .option(...TEST_OPTION)
+  .option(...LIVE_OPTION)
+  .option(...NO_REBUILD_OPTION)
+  .description('Take a secret away from the app, then build the versions again')
+  .action(async (names, options) => {
+    await secrets.remove(names, { ...program.opts(), ...options });
   });
 
 // Git runs this one; a person never types it. See src/repo.ts.

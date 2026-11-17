@@ -44,3 +44,47 @@ export async function confirm(question: string, fallback = true): Promise<boolea
     rl.close();
   }
 }
+
+const ENTER = new Set(['\r', '\n']);
+const CTRL_C = '\u0003';
+const CTRL_D = '\u0004';
+const BACKSPACE = new Set(['\u007f', '\b']);
+
+/** What the keys typed so far amount to: the value, and whether the line ended or was given up. */
+export function typedSecret(keys: string, value = ''): { value: string; done: 'entered' | 'cancelled' | null } {
+  for (const key of keys) {
+    if (ENTER.has(key) || key === CTRL_D) return { value, done: 'entered' };
+    if (key === CTRL_C) return { value: '', done: 'cancelled' };
+    value = BACKSPACE.has(key) ? value.slice(0, -1) : value + key;
+  }
+  return { value, done: null };
+}
+
+/**
+ * Ask for a value that must not be shown: nothing typed or pasted is echoed,
+ * so it is not left on the screen or in a recording of it. One line; a value
+ * of several lines, such as a PEM key, comes from a file instead. The caller
+ * has checked that there is a terminal.
+ */
+export function askSecret(question: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const input = process.stdin;
+    process.stdout.write(`  ${question}: `);
+    input.setRawMode(true);
+    input.resume();
+    input.setEncoding('utf8');
+    let value = '';
+    const onData = (keys: string) => {
+      const typed = typedSecret(keys, value);
+      value = typed.value;
+      if (typed.done === null) return;
+      input.off('data', onData);
+      input.setRawMode(false);
+      input.pause();
+      process.stdout.write('\n');
+      if (typed.done === 'cancelled') reject(new Error('Cancelled. Nothing was set.'));
+      else resolve(value);
+    };
+    input.on('data', onData);
+  });
+}

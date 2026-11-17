@@ -113,7 +113,8 @@ const declaredNameHere = (): string | null => {
   }
 };
 
-const appIdHere = (): string | null => {
+/** The app of the clone this runs in, or null outside a clone from `bankroll apps clone`. */
+export const appIdHere = (): string | null => {
   const config = git(['config', '--get-regexp', '^credential\\..*\\.helper$']);
   return config === null ? null : appIdFromConfig(config);
 };

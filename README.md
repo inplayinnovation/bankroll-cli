@@ -36,6 +36,10 @@ bankroll wait test                              the build a push to main started
 bankroll wait live                              the build a push to live started, then the live address
 bankroll faucet                                 test cash for your account
 
+bankroll env                                    the names of the app's secrets, and which versions have a value
+bankroll env set NAME                           give the app a secret; the value is asked for with nothing shown
+bankroll env rm NAME                            take a secret away
+
 bankroll dev                                    the app in Bankroll Desktop: as on a phone, with a test user and test cash
 bankroll dev --phone                            on your phone instead: tunnel + QR, injects your key
 ```
@@ -57,6 +61,39 @@ cash; the test version's menu in the app has the same button.
 
 `bankroll apps` lists the commit each version serves, whole. What is tested
 but not live is a git question: `git log bankroll/live..bankroll/main`.
+
+### Secrets
+
+An app that uses an outside service needs that service's key: an API key, a
+database password, a webhook secret. `bankroll env set KALSHI_API_KEY` asks
+for the value with nothing shown and gives it to the app, which reads it on
+the server as `process.env.KALSHI_API_KEY`. The value is never an argument,
+so it does not reach your shell's history. A value of several lines, such as
+a PEM key, comes from a file: `--from-file key.pem`. A pipe works too:
+`pbpaste | bankroll env set KALSHI_API_KEY`.
+
+A value goes to Bankroll once, and nobody can read it back, you included:
+`bankroll env` lists names only. Keep your own copy where you keep keys. The
+test version and the live version each have a value of their own. With no
+option a command is for both; `--test` or `--live` names one, so a test
+database and a live database can sit under the same name.
+
+A build reads its secrets when it is made, so `set` and `rm` build the
+versions again and watch the build, as `bankroll wait` does. The live version
+is built again only while it serves the commit its branch holds; otherwise
+the change is read at the next publish. `--no-rebuild` leaves the build for
+later, and several names in one command share one build. A rebuild counts as
+one of your builds for the day.
+
+A name is capital letters, digits and underscores. Bankroll's own names
+(`BANKROLL_…`), the host's, and `NEXT_PUBLIC_…` are refused: Next.js builds a
+`NEXT_PUBLIC_` value into the code the browser downloads, so it is no place
+for a secret. On your own computer a secret goes in `.env.local`, which git
+ignores and Bankroll never sees. Write the app so that it runs without the
+secret, with that feature closed: a local test and Bankroll's own checks do
+not have it. An app that holds a secret cannot be remixed.
+
+`bankroll secrets` is the same command under another name.
 
 ### `bankroll dev --phone`
 

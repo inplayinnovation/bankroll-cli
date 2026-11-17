@@ -29,6 +29,7 @@ bankroll apps clone <id>            # an app you already have, if its repo is no
 bankroll wait test                  # after `git push bankroll main`: the build, then the test address and a QR
 bankroll wait live                  # after `git push bankroll main:live`: the build, then the live address
 bankroll faucet                     # $100 of test cash for the account; a test version takes nothing else
+bankroll env                        # the names of the app's secrets; the user sets a value with `bankroll env set NAME`
 bankroll --help                     # discover the rest; do not recall commands from memory
 ```
 
@@ -123,6 +124,29 @@ Never deploy the app yourself: no `vercel link`, no `vercel deploy`;
 deploys. Never create or edit files under `.github/workflows`. Nothing about
 money or keys goes in the repo: the wallet, the signed manifest, the webhook
 secret, and the restrictions are settings Bankroll puts on the deployment.
+
+## Secrets for an outside service
+
+An app may use an outside service that needs a key: a data feed, the owner's
+own database, a partner's API. The key is a secret the **owner** gives the
+app, with `bankroll env set NAME` in their own terminal.
+
+- You never see a value. Do not ask the user for one, do not type one into a
+  command, and do not write one into a file, a log, or a commit. Tell the
+  user the names the app needs, such as `KALSHI_API_KEY`, and that they run
+  `bankroll env set KALSHI_API_KEY`; `--test` or `--live` sets one version.
+- Read it on the server as `process.env.NAME`: in a route handler or a server
+  module, never in a client component, and never under a `NEXT_PUBLIC_` name,
+  which Next.js builds into the code the browser downloads.
+- The app must build and run with the secret missing. The mock, `npm run
+  check`, Bankroll's own builder and a fresh clone do not have it. Close that
+  one feature and say so on the screen; the rest of the app works.
+- `bankroll env` lists the names the app has, never a value: nobody can read
+  one back. A change builds the versions again by itself.
+- On the user's own computer a secret goes in `.env.local`, which git ignores.
+- A switch the owner flips, such as "pause entries", is not a secret: keep it
+  in the app's own store with a screen only the owner sees.
+- An app that holds a secret cannot be remixed.
 
 ## The QR, when you run the phone loop
 
