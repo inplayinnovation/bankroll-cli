@@ -14,12 +14,13 @@ import {
   removeSecrets,
   secretLines,
   setSecrets,
+  severalLinesHelp,
   versionWords,
   versionsFor,
   withoutFinalLineBreak,
 } from '../src/env';
 import type { Fetch } from '../src/privyDevice';
-import { typedSecret } from '../src/prompt';
+import { NO_KEYS, type SecretKeys, typedSecret } from '../src/prompt';
 import { writeSession, type Session, type SessionLocation } from '../src/session';
 import { FileStore } from '../src/sessionStore';
 
@@ -89,21 +90,88 @@ describe('withoutFinalLineBreak', () => {
   });
 });
 
+// What a terminal sends around a paste when it is asked to mark pastes.
+const PASTE_START = '\u001b[200~';
+const PASTE_END = '\u001b[201~';
+const PEM = ['-----BEGIN PRIVATE KEY-----', 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASC', '-----END PRIVATE KEY-----'];
+
+// The keys as they arrive, one piece after another, the way the terminal hands them over.
+const typed = (...pieces: string[]): SecretKeys => pieces.reduce((keys, piece) => typedSecret(piece, keys), NO_KEYS);
+const entered = (value: string): SecretKeys => ({ value, done: 'entered', paste: null, held: '' });
+const SEVERAL_LINES: SecretKeys = { value: '', done: 'several-lines', paste: null, held: '' };
+
 describe('typedSecret', () => {
   it('ends at Enter, and keeps what was typed before it', () => {
-    expect(typedSecret('sk-123\r')).toEqual({ value: 'sk-123', done: 'entered' });
-    expect(typedSecret('-123\n', 'sk')).toEqual({ value: 'sk-123', done: 'entered' });
+    expect(typed('sk-123\r')).toEqual(entered('sk-123'));
+    expect(typed('sk', '-123\n')).toEqual(entered('sk-123'));
+    expect(typed('sk-123\u0004')).toEqual(entered('sk-123'));
   });
 
   it('goes on while no line has ended, and takes a pasted run of keys at once', () => {
-    expect(typedSecret('sk-')).toEqual({ value: 'sk-', done: null });
-    expect(typedSecret('123', 'sk-')).toEqual({ value: 'sk-123', done: null });
+    expect(typed('sk-')).toEqual({ value: 'sk-', done: null, paste: null, held: '' });
+    expect(typed('sk-', '123')).toEqual({ value: 'sk-123', done: null, paste: null, held: '' });
   });
 
-  it('takes back a key on backspace, and gives up the value on Ctrl-C', () => {
-    expect(typedSecret('skx\u007f-1\r')).toEqual({ value: 'sk-1', done: 'entered' });
-    expect(typedSecret('\u007f\u007fa\r')).toEqual({ value: 'a', done: 'entered' });
-    expect(typedSecret('sk-123\u0003')).toEqual({ value: '', done: 'cancelled' });
+  it('takes back a key on backspace, a whole character at a time, and gives up the value on Ctrl-C', () => {
+    expect(typed('skx\u007f-1\r')).toEqual(entered('sk-1'));
+    expect(typed('\u007f\u007fa\r')).toEqual(entered('a'));
+    expect(typed('sk-😀\u007f1\r')).toEqual(entered('sk-1'));
+    expect(typed('sk-123\u0003')).toEqual({ value: '', done: 'cancelled', paste: null, held: '' });
+    expect(typed('sk-123\u0003', 'more\r')).toEqual({ value: '', done: 'cancelled', paste: null, held: '' });
+  });
+
+  it('never takes the first line of a pasted value of several lines for the value', () => {
+    // A terminal that marks no pastes sends the lines as typing: at once, or in pieces.
+    expect(typed(`${PEM.join('\r')}\r`)).toEqual(SEVERAL_LINES);
+    expect(typed(`${PEM[0]}\r`, `${PEM[1]}\r`, `${PEM[2]}\r`)).toEqual(SEVERAL_LINES);
+    expect(typed(`${PEM.join('\n')}\n`)).toEqual(SEVERAL_LINES);
+    // A terminal that marks pastes: the same answer, known at the end mark.
+    expect(typed(`${PASTE_START}${PEM.join('\r')}\r${PASTE_END}`)).toEqual(SEVERAL_LINES);
+    expect(typed(`${PASTE_START}${PEM[0]}\r`, `${PEM[1]}\r${PEM[2]}${PASTE_END}`)).toEqual(SEVERAL_LINES);
+    // Typed after Enter, before the prompt let go: still more than one line.
+    expect(typed('sk-123\r', 'x')).toEqual(SEVERAL_LINES);
+  });
+
+  it('takes a line break after the line has ended for nothing: Enter twice, or a line that ends in two', () => {
+    expect(typed('sk-123\r\r')).toEqual(entered('sk-123'));
+    expect(typed('sk-123\r\n')).toEqual(entered('sk-123'));
+    expect(typed('sk-123\r', '\n', '\r')).toEqual(entered('sk-123'));
+  });
+
+  it('takes one pasted line that the terminal marked, entered by its own line break or by Enter', () => {
+    expect(typed(`${PASTE_START}sk-123\r${PASTE_END}`)).toEqual(entered('sk-123'));
+    expect(typed(`${PASTE_START}sk-123\r\n${PASTE_END}`)).toEqual(entered('sk-123'));
+    expect(typed(`${PASTE_START}sk-123${PASTE_END}`)).toEqual({ value: 'sk-123', done: null, paste: null, held: '' });
+    expect(typed(`${PASTE_START}sk-123${PASTE_END}`, '\r')).toEqual(entered('sk-123'));
+    expect(typed('sk-', `${PASTE_START}123${PASTE_END}`, '4\r')).toEqual(entered('sk-1234'));
+  });
+
+  it('knows a paste mark that arrives in pieces, and holds the value until the mark is whole', () => {
+    expect(typed('\u001b[20')).toEqual({ value: '', done: null, paste: null, held: '\u001b[20' });
+    expect(typed('\u001b[20', '0~sk-123\u001b[2')).toEqual({ value: '', done: null, paste: 'sk-123', held: '\u001b[2' });
+    expect(typed('\u001b[20', '0~sk-123\u001b[2', '01~', '\r')).toEqual(entered('sk-123'));
+    expect(typed('\u001b', '[200~sk-123\u001b', '[201~\r')).toEqual(entered('sk-123'));
+  });
+
+  it('adds nothing to the value for a key that prints nothing', () => {
+    // Left arrow, Home on a keypad, F5, and a left arrow that arrives in two pieces.
+    expect(typed('sk-\u001b[D1\r')).toEqual(entered('sk-1'));
+    expect(typed('sk-\u001bOH1\r')).toEqual(entered('sk-1'));
+    expect(typed('sk-\u001b[15~1\r')).toEqual(entered('sk-1'));
+    expect(typed('sk-\u001b[', 'D1\r')).toEqual(entered('sk-1'));
+    // The Escape key alone, then an ordinary key: the key counts.
+    expect(typed('\u001b', 'sk-1\r')).toEqual(entered('sk-1'));
+    expect(typed('sk-\u001b\r')).toEqual(entered('sk-'));
+  });
+});
+
+describe('severalLinesHelp', () => {
+  it('says nothing was set and names the two ways that take several lines, with the name filled in', () => {
+    const help = severalLinesHelp('KALSHI_PRIVATE_KEY');
+
+    expect(help).toContain('Nothing was set.');
+    expect(help).toContain('bankroll env set KALSHI_PRIVATE_KEY --from-file <file>');
+    expect(help).toContain('pbpaste | bankroll env set KALSHI_PRIVATE_KEY');
   });
 });
 

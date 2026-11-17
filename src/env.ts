@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { graphql, type SessionOptions } from './api';
 import { resolveEnvironment } from './environments';
 import type { AccountOptions } from './login';
-import { askSecret } from './prompt';
+import { askSecret, SeveralLinesError } from './prompt';
 import { sessionLocation, type SessionLocation } from './session';
 import { appIdHere, TARGETS, type Target, wait } from './wait';
 
@@ -161,6 +161,15 @@ const readStdin = async (): Promise<string> => {
   return Buffer.concat(chunks).toString('utf8');
 };
 
+/** What a person is told after pasting a value of several lines at the prompt, which takes one. */
+export function severalLinesHelp(name: string): string {
+  return [
+    `Nothing was set. The value for ${name} has more than one line, and the prompt takes one line.`,
+    `Put the value in a file and run \`bankroll env set ${name} --from-file <file>\`,`,
+    `or send it through a pipe, such as \`pbpaste | bankroll env set ${name}\` on a Mac.`,
+  ].join('\n  ');
+}
+
 // Where a value comes from, in this order: the file named, a pipe, the
 // keyboard with nothing shown. Never an argument: an argument stays in the
 // shell's history.
@@ -173,7 +182,12 @@ async function valueFor(name: string, names: string[], options: SetOptions): Pro
     if (names.length > 1) throw new Error('A pipe holds one value, so it goes with one name.');
     return withoutFinalLineBreak(await readStdin());
   }
-  return askSecret(`Value for ${name} (not shown)`);
+  try {
+    return await askSecret(`Value for ${name} (not shown)`);
+  } catch (error) {
+    if (error instanceof SeveralLinesError) throw new Error(severalLinesHelp(name));
+    throw error;
+  }
 }
 
 // The builds a change started, watched the way `bankroll wait` watches a push.

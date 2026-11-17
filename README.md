@@ -70,7 +70,8 @@ for the value with nothing shown and gives it to the app, which reads it on
 the server as `process.env.KALSHI_API_KEY`. The value is never an argument,
 so it does not reach your shell's history. A value of several lines, such as
 a PEM key, comes from a file: `--from-file key.pem`. A pipe works too:
-`pbpaste | bankroll env set KALSHI_API_KEY`.
+`pbpaste | bankroll env set KALSHI_API_KEY`. The prompt takes one line: if
+you paste several lines there, nothing is set and the command says so.
 
 A value goes to Bankroll once, and nobody can read it back, you included:
 `bankroll env` lists names only. Keep your own copy where you keep keys. The
